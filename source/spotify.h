@@ -36,51 +36,13 @@ public:
 class spotify_t
 {
 public:
-  spotify_t()
-    :
-    m_session(0),
-    m_session_logged_in(false),
-    m_running(true),
-    m_session_next_timeout(0),
-    m_track(0),
-    m_track_playing(false),
-    m_audio_output(),
-    m_thr{&spotify_t::main, this}
-  {
-  }
-  ~spotify_t()
-  {
-    std::cout << "spotify_t::" << __FUNCTION__ << std::endl;
-    if ( m_running ) {
-      stop();
-    }
-    m_thr.join();
-    std::cout << "spotify_t::" << __FUNCTION__ << " joined thread" << std::endl;
-  }
+  spotify_t();
 public:
-  void stop()
-  {
-    m_command_queue.push([this]() {
-      this->m_running = false;
-    });
-  }
+  ~spotify_t();
 public:
-  void login(const std::string& username, const std::string& password)
-  {
-    m_command_queue.push([=]() {
-      sp_session_login(m_session, username.c_str(), password.c_str(), 0, 0);
-    });
-  }
-public:
-  void player_play(const std::string& uri)
-  {
-    m_command_queue.push([=]() {
-      m_play_queue.push_back(uri);
-      if ( m_session_logged_in && !m_track ) {
-        play_next_from_queue();
-      }
-    });
-  }
+  void stop();
+  void login(const std::string& username, const std::string& password);
+  void player_play(const std::string& uri);
 public:
   void player_stop()
   {

@@ -1,4 +1,65 @@
 #include <spotify.h>
+#include <log.h>
+
+// ----------------------------------------------------------------------------
+spotify_t::spotify_t()
+  :
+  m_session(0),
+  m_session_logged_in(false),
+  m_running(true),
+  m_session_next_timeout(0),
+  m_track(0),
+  m_track_playing(false),
+  m_audio_output(),
+  m_thr{&spotify_t::main, this}
+{
+  LOG(DEBUG) << "constructed spotify instance " << this;
+}
+
+// ----------------------------------------------------------------------------
+spotify_t::~spotify_t()
+{
+  LOG(DEBUG) << "begin destruction of spotify instance " << this;
+  if ( m_running ) {
+    stop();
+  }
+  m_thr.join();
+  LOG(DEBUG) << "end destruction of spotify instance " << this;
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::stop()
+{
+  m_command_queue.push([this]()
+  {
+    if ( m_track_playing )
+    {
+      sp_session_player_unload(m_session);
+      m_track_playing = false;
+    }
+
+    this->m_running = false;
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::login(const std::string& username, const std::string& password)
+{
+  m_command_queue.push([=]() {
+    sp_session_login(m_session, username.c_str(), password.c_str(), 0, 0);
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::player_play(const std::string& uri)
+{
+  m_command_queue.push([=]() {
+    m_play_queue.push_back(uri);
+    if ( m_session_logged_in && !m_track ) {
+      play_next_from_queue();
+    }
+  });
+}
 
 // ----------------------------------------------------------------------------
 void spotify_t::init()
@@ -74,17 +135,19 @@ void spotify_t::main()
         cmd();
     }
 
-    std::cout << "spotify_t::" << __FUNCTION__ << " release session " << m_session << std::endl;
+    LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
     sp_session_release(m_session);
   }
   catch(std::exception& e)
   {
-    std::cout << "spotify_t::" << __FUNCTION__ << " error=" << e.what() << std::endl;
+    LOG(FATAL) << "spotify_t::" << __FUNCTION__ << " error=" << e.what();
+    LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
     sp_session_release(m_session);
   }
   catch(...)
   {
-    std::cout << "spotify_t::" << __FUNCTION__ << " error=<unknown>" << std::endl;
+    LOG(FATAL) << "spotify_t::" << __FUNCTION__ << " unknown error";
+    LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
     sp_session_release(m_session);
   }
 }
@@ -92,7 +155,7 @@ void spotify_t::main()
 // ----------------------------------------------------------------------------
 void spotify_t::logged_in_handler()
 {
-  std::cout << "spotify_t::" << __FUNCTION__ << std::endl;
+  LOG(DEBUG) << "spotify_t::" << __FUNCTION__;
   m_session_logged_in = true;
   //play_next_from_queue();
 }
@@ -108,7 +171,7 @@ void spotify_t::track_loaded_handler()
     sp_artist_add_ref(artist = sp_track_artist(m_track, 0));
     sp_album_add_ref(album = sp_track_album(m_track));
 
-    std::cout << "Playing : " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(m_track) << std::endl;
+    LOG(INFO) << "Start playing " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(m_track);
 
     sp_session_player_load(m_session, m_track);
     sp_session_player_play(m_session, 1);
@@ -123,7 +186,7 @@ void spotify_t::track_loaded_handler()
 // ----------------------------------------------------------------------------
 void spotify_t::end_of_track_handler()
 {
-  std::cout << "spotify_t::" << __FUNCTION__ << std::endl;
+  LOG(INFO) << "spotify_t::" << __FUNCTION__;
 
   assert(m_session);
   assert(m_track);
@@ -206,7 +269,7 @@ void spotify_t::logged_in_cb(sp_session *session, sp_error error)
 // ----------------------------------------------------------------------------
 void spotify_t::logged_out_cb(sp_session *session)
 {
-    std::cout << "callback:  " << __FUNCTION__ << std::endl;
+    LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -227,13 +290,13 @@ inline void spotify_t::metadata_updated_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::connection_error_cb(sp_session *session, sp_error error)
 {
-  std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::message_to_user_cb(sp_session *session, const char* message)
 {
-  std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -261,13 +324,13 @@ int spotify_t::music_delivery(sp_session *session, const sp_audioformat *format,
 // ----------------------------------------------------------------------------
 void spotify_t::play_token_lost_cb(sp_session *session)
 {
-  std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::log_message_cb(sp_session *session, const char* data)
 {
-  //std::cout << "callback:  " << __FUNCTION__ << " : " << data;
+  LOG(INFO) << "spotify : " << data;
 }
 
 // ----------------------------------------------------------------------------
@@ -281,25 +344,25 @@ void spotify_t::end_of_track_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::stream_error_cb(sp_session *session, sp_error error)
 {
-  std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::user_info_updated_cb(sp_session *session)
 {
-    std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::start_playback_cb(sp_session *session)
 {
-    std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::stop_playback_cb(sp_session *session)
 {
-    std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -320,13 +383,13 @@ void spotify_t::get_audio_buffer_stats_cb(sp_session *session, sp_audio_buffer_s
 // ----------------------------------------------------------------------------
 void spotify_t::offline_status_updated_cb(sp_session *session)
 {
-    std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::offline_error_cb(sp_session *session, sp_error error)
 {
-    std::cout << "callback:  " << __FUNCTION__ << std::endl;
+  LOG(INFO) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------

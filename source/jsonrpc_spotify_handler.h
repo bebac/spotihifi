@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 //
-//     Filename:  jsonrpc_echo_handler.h
+//     Filename:  jsonrpc_spotify_handler.h
 //
 //  Description:
 //
@@ -8,21 +8,22 @@
 //      Company:
 //
 // ----------------------------------------------------------------------------
-#ifndef __jsonrpc_echo_handler_h__
-#define __jsonrpc_echo_handler_h__
+#ifndef __jsonrpc_spotify_handler_h__
+#define __jsonrpc_spotify_handler_h__
 
 // ----------------------------------------------------------------------------
 #include <json.h>
 #include <spotify.h>
+#include <log.h>
 
 // ----------------------------------------------------------------------------
 #include <fstream>
 
 // ----------------------------------------------------------------------------
-class jsonrpc_echo_handler : public jsonrpc_handler
+class jsonrpc_spotify_handler : public jsonrpc_handler
 {
 public:
-    jsonrpc_echo_handler(spotify_t& spotify)
+    jsonrpc_spotify_handler(spotify_t& spotify)
         :
         spotify(spotify)
     {
@@ -30,7 +31,7 @@ public:
 public:
     virtual void call_method(const std::string& method, json::value params, json::object& response)
     {
-        std::cout << "method: '" << method << "', params:" << params << std::endl;
+        LOG(INFO) << "method: '" << method << "', params:" << params;
 
         if ( method == "echo" )
         {
@@ -50,9 +51,8 @@ public:
             try {
                 parser.parse(str.c_str(), str.length());
             }
-            catch (const std::exception& e)
-            {
-                std::cout << "parse error:" << e.what() << std::endl;
+            catch (const std::exception& e) {
+                LOG(ERROR) << "parse error:" << e.what();
             }
 
             response.set("result", v);
@@ -78,4 +78,4 @@ private:
 };
 
 // ----------------------------------------------------------------------------
-#endif // __jsonrpc_echo_handler_h__
+#endif // __jsonrpc_spotify_handler_h__

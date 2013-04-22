@@ -8,6 +8,7 @@
 #include <jsonrpc.h>
 #include <jsonrpc_spotify_handler.h>
 #include <spotify.h>
+#include <log.h>
 
 // ----------------------------------------------------------------------------
 #include <iostream>
@@ -111,20 +112,20 @@ public:
             // Enter command loop.
             while ( m_running )
             {
-                auto cmd = m_cmdq.pop(std::chrono::seconds(1), []{
-                    std::cout << "timeout" << std::endl;
+                auto cmd = m_cmdq.pop(std::chrono::seconds(5), []{
+                    LOG(DEBUG) << "client connection idle";
                 });
                 cmd();
             }
             // Join receive thread before terminating.
             receive_thr.join();
-            std::cout << "client connection terminated" << std::endl;
+            LOG(INFO) << "client connection terminated";
         }
         catch(std::exception& e) {
-            std::cout << "client connection error! " << e.what() << std::endl;
+            LOG(ERROR) << "client connection error! " << e.what();
         }
         catch(...) {
-            std::cout << "client connection error! " << std::endl;
+            LOG(ERROR) << "client connection error!";
         }
     }
 private:
@@ -136,11 +137,11 @@ private:
             }
         }
         catch(const std::exception& e) {
-            std::cout << "client connection receive error! " << e.what() << std::endl;
+            LOG(ERROR) << "client connection receive error! " << e.what();
             disconnect();
         }
         catch(...) {
-            std::cout << "client connection receive error! " << std::endl;
+            LOG(ERROR) << "client connection receive error!";
             disconnect();
         }
     }
@@ -151,12 +152,11 @@ private:
 
         receive(hbuf, 4);
 
-        std::cout
-            << "hbuf:"
+        LOG(DEBUG) << "hbuf:"
             << static_cast<int>(hbuf[0]) << ", "
             << static_cast<int>(hbuf[1]) << ", "
             << static_cast<int>(hbuf[2]) << ", "
-            << static_cast<int>(hbuf[3]) << std::endl;
+            << static_cast<int>(hbuf[3]);
 
         size_t hlen = 0;
 
@@ -165,7 +165,7 @@ private:
         hlen += hbuf[1]<<16;
         hlen += hbuf[0]<<24;
 
-        std::cout << "hlen=" << hlen << std::endl;
+        LOG(DEBUG) << "hlen=" << hlen;
 
         std::vector<char> bbuf(hlen);
 
@@ -178,7 +178,7 @@ private:
 
         size_t consumed = parser.parse(bbuf.data(), hlen);
 
-        std::cout << "consumed=" << consumed << ", complete=" << parser.complete() << std::endl;
+        LOG(DEBUG) << "parser consumed=" << consumed << ", complete=" << parser.complete();
         //std::cout << "body: '" << doc << "'" << std::endl;
 
         auto request = jsonrpc_request::from_json(doc);
@@ -187,16 +187,20 @@ private:
         {
             json::object response;
 
+            LOG(DEBUG) << "received request " << doc;
+
             response.set("jsonrpc", "2.0");
             response.set("id", request.id());
 
             m_handler->call_method(request.method(), request.params(), response);
 
+            LOG(DEBUG) << "sending response length=" << to_string(response).length();
+
             send(std::move(response));
         }
         else
         {
-            std::cout << "invalid jsonrpc request: " << request.error() << std::endl;
+            LOG(INFO) << "invalid jsonrpc request: " << request.error();
 
             json::object response;
 
@@ -230,7 +234,9 @@ private:
 // ----------------------------------------------------------------------------
 void sig_handler(int signum)
 {
-    std::cout << "got signal " << signum << std::endl;
+    std::cerr << std::endl;
+    LOG(INFO) << "got signal " << signum;
+    throw std::runtime_error("interrupted");
 }
 
 // ----------------------------------------------------------------------------
@@ -239,7 +245,11 @@ int main(int argc, char *argv[])
     options options;
 
     if ( signal(SIGPIPE, sig_handler) == SIG_ERR ) {
-        std::cout << "Error installing signal handler!" << std::endl;
+        std::cerr << "Error installing signal handler!" << std::endl;
+    }
+
+    if ( signal(SIGINT, sig_handler) == SIG_ERR ) {
+        std::cerr << "Error installing signal handler!" << std::endl;
     }
 
     try
@@ -263,7 +273,7 @@ int main(int argc, char *argv[])
 
         inet::tcp::socket listener;
 
-        std::cout << "starting server on " << options.address << ":" << options.port << " CTRL-C to stop" << std::endl;
+        LOG(INFO) << "starting server on " << options.address << ":" << options.port << " CTRL-C to stop";
 
         listener.bind(inet::socket_address(options.address.c_str(), options.port));
         listener.listen(5);
@@ -273,17 +283,20 @@ int main(int argc, char *argv[])
         while ( true )
         {
             inet::tcp::socket client = listener.accept(client_address);
-            std::cout << "client " << client_address.ip() << ":" << client_address.port() << " connected" << std::endl;
-            std::thread c1(client_connection(std::move(client), new jsonrpc_echo_handler(spotify)));
+
+            LOG(INFO) << "client "
+                      << client_address.ip() << ":" << client_address.port()
+                      << " connected";
+
+            std::thread c1(client_connection(std::move(client), new jsonrpc_spotify_handler(spotify)));
             c1.detach();
         }
     }
     catch(const program_options::error& err) {
-        std::cout << err.what() << std::endl
+        std::cerr << err.what() << std::endl
                   << "try: example --help" << std::endl;
     }
-    catch(const std::exception& err)
-    {
-        std::cout << "Error! " << err.what() << std::endl;
+    catch(const std::exception& err) {
+        LOG(FATAL) << err.what();
     }
 }

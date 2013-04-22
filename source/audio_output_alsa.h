@@ -4,6 +4,7 @@
 
 // ----------------------------------------------------------------------------
 #include <cmdque.h>
+#include <log.h>
 
 // ----------------------------------------------------------------------------
 #include <iostream>
@@ -112,17 +113,15 @@ private:
     //err = snd_pcm_open( &m_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0 );
     err = snd_pcm_open( &m_handle, "default", SND_PCM_STREAM_PLAYBACK, 0 );
     if ( err < 0 ) {
-      //throw std::runtime_error(snd_strerror(err));
-      std::cout << "snd_pcm_open failed! " << snd_strerror(err) << std::endl;
+      LOG(ERROR) << "snd_pcm_open failed! " << snd_strerror(err);
     }
     else {
-      std::cout << "snd_pcm_open ok" << std::endl;
+      LOG(DEBUG) << "snd_pcm_open ok";
     }
 
     err = snd_pcm_set_params(m_handle, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED, 2, 44100, 0, 500000);
     if ( err < 0 ) {
-      //throw std::runtime_error(snd_strerror(err));
-      std::cout << "snd_pcm_set_params failed! " << snd_strerror(err) << std::endl;
+      LOG(ERROR) << "snd_pcm_set_params failed! " << snd_strerror(err);
     }
   }
 private:
@@ -132,13 +131,12 @@ private:
       snd_pcm_sframes_t frames = snd_pcm_writei(m_handle, buffer->data(), buffer->len()/4);
 
       if ( frames < 0 ) {
-        std::cout << "underrun" << std::endl;
+        LOG(WARNING) << "underrun";
         frames = snd_pcm_recover(m_handle, frames, 0);
       }
 
       if ( frames < 0 ) {
-        //throw std::runtime_error(snd_strerror(written));
-        std::cout << snd_strerror(frames) << std::endl;
+        LOG(ERROR) << snd_strerror(frames);
       }
       else {
         m_queued_frames -= frames;
@@ -157,6 +155,7 @@ private:
     }
 
     if (m_handle) {
+      LOG(INFO) << "closing pcm (m_handle=" << m_handle << ")";
       snd_pcm_close(m_handle);
     }
   }
