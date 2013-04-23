@@ -105,27 +105,35 @@ public:
     void operator()()
     {
         m_running = true;
+
+        // Start receive thread.
+        std::thread receive_thr(&client_connection::receive_loop, this);
+
         try
         {
-            // Start receive thread.
-            std::thread receive_thr(&client_connection::receive_loop, this);
             // Enter command loop.
             while ( m_running )
             {
-                auto cmd = m_cmdq.pop(std::chrono::seconds(5), []{
+                auto cmd = m_cmdq.pop(std::chrono::seconds(5), [this]{
                     LOG(DEBUG) << "client connection idle";
+                    send(json::object());
                 });
                 cmd();
             }
             // Join receive thread before terminating.
+            LOG(DEBUG) << "client connection joining receiver";
             receive_thr.join();
             LOG(INFO) << "client connection terminated";
         }
         catch(std::exception& e) {
-            LOG(ERROR) << "client connection error! " << e.what();
+            LOG(DEBUG) << "client connection joining receiver";
+            receive_thr.join();
+            LOG(ERROR) << "client connection terminated! " << e.what();
         }
         catch(...) {
-            LOG(ERROR) << "client connection error!";
+            LOG(DEBUG) << "client connection joining receiver";
+            receive_thr.join();
+            LOG(ERROR) << "client connection terminated!";
         }
     }
 private:

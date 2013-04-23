@@ -42,47 +42,11 @@ public:
 public:
   void stop();
   void login(const std::string& username, const std::string& password);
+  void player_play();
   void player_play(const std::string& uri);
-public:
-  void player_stop()
-  {
-#if 0
-    m_command_queue.push([=]()
-    {
-      if ( m_track_playing )
-      {
-        sp_session_player_unload(m_session);
-        m_track_playing = false;
-      }
-      if ( m_track )
-      {
-        sp_track_release(m_track);
-        m_track = 0;
-      }
-      m_audio_output.reset();
-    });
-#endif
-  }
-public:
-  void player_skip()
-  {
-#if 0
-    m_command_queue.push([=]()
-    {
-      if ( m_track_playing )
-      {
-        sp_session_player_unload(m_session);
-        m_track_playing = false;
-      }
-      if ( m_track )
-      {
-        sp_track_release(m_track);
-        m_track = 0;
-      }
-      play_next_from_queue();
-    });
-#endif
-  }
+  void player_skip();
+  void player_pause();
+  void player_stop();
 public:
   void player_queue_clear()
   {
@@ -102,11 +66,12 @@ private:
   void end_of_track_handler();
   void process_events_handler();
   void play_next_from_queue();
+  bool import_playlist(sp_playlist* pl);
 private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
   std::shared_ptr<audio_output_t> get_audio_output();
 private:
-  // spotify_t callbacks.
+  // session callbacks.
   static void logged_in_cb(sp_session *session, sp_error error);
   static void logged_out_cb(sp_session *session);
   static void metadata_updated_cb(sp_session *session);
@@ -125,9 +90,10 @@ private:
   static void offline_status_updated_cb(sp_session *session);
   static void offline_error_cb(sp_session *session, sp_error error);
   static void credentials_blob_updated_cb(sp_session *session, const char* blob);
+  // playlist callbacks.
+  static void playlist_state_changed_cb(sp_playlist* pl, void* userdata);
 protected:
   sp_session* m_session;
-  //sp_session_config m_session_config;
   bool m_session_logged_in;
   bool m_running;
   cmdque_t m_command_queue;
@@ -135,6 +101,7 @@ protected:
   std::deque<std::string> m_play_queue;
   sp_track* m_track;
   sp_playlistcontainer* m_playlistcontainer;
+  sp_playlist* m_starred;
   bool m_track_playing;
   std::shared_ptr<audio_output_t> m_audio_output;
   std::thread m_thr;

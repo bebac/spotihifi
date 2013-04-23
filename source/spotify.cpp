@@ -2,6 +2,9 @@
 #include <log.h>
 
 // ----------------------------------------------------------------------------
+static std::string sp_track_id(sp_track* track);
+
+// ----------------------------------------------------------------------------
 spotify_t::spotify_t()
   :
   m_session(0),
@@ -51,6 +54,19 @@ void spotify_t::login(const std::string& username, const std::string& password)
 }
 
 // ----------------------------------------------------------------------------
+void spotify_t::player_play()
+{
+  m_command_queue.push([=]() {
+    if ( m_session_logged_in && m_track ) {
+      sp_session_player_play(m_session, 1);
+    }
+    else {
+      play_next_from_queue();
+    }
+  });
+}
+
+// ----------------------------------------------------------------------------
 void spotify_t::player_play(const std::string& uri)
 {
   m_command_queue.push([=]() {
@@ -58,6 +74,54 @@ void spotify_t::player_play(const std::string& uri)
     if ( m_session_logged_in && !m_track ) {
       play_next_from_queue();
     }
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::player_pause()
+{
+  m_command_queue.push([=]() {
+    if ( m_session_logged_in && m_track ) {
+      sp_session_player_play(m_session, 0);
+    }
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::player_skip()
+{
+  m_command_queue.push([=]()
+  {
+    if ( m_track_playing )
+    {
+      sp_session_player_unload(m_session);
+      m_track_playing = false;
+    }
+    if ( m_track )
+    {
+      sp_track_release(m_track);
+      m_track = 0;
+    }
+    play_next_from_queue();
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::player_stop()
+{
+  m_command_queue.push([=]()
+  {
+    if ( m_track_playing )
+    {
+      sp_session_player_unload(m_session);
+      m_track_playing = false;
+    }
+    if ( m_track )
+    {
+      sp_track_release(m_track);
+      m_track = 0;
+    }
+    m_audio_output.reset();
   });
 }
 
@@ -129,8 +193,18 @@ void spotify_t::main()
     init();
     while ( m_running )
     {
-        auto cmd = m_command_queue.pop(std::chrono::seconds(1), []{
+        auto cmd = m_command_queue.pop(std::chrono::milliseconds(500), [this]{
             //std::cout << "timeout" << std::endl;
+#if 0
+            if ( m_starred && sp_playlist_is_loaded(m_starred) ) {
+              if ( import_playlist(m_starred) )
+              {
+                LOG(INFO) << "starred tracks imported";
+                sp_playlist_release(m_starred);
+                m_starred = 0;
+              }
+             }
+#endif
         });
         cmd();
     }
@@ -156,8 +230,31 @@ void spotify_t::main()
 void spotify_t::logged_in_handler()
 {
   LOG(DEBUG) << "spotify_t::" << __FUNCTION__;
+
   m_session_logged_in = true;
-  //play_next_from_queue();
+
+#if 0
+  // Start loading the starred playlist.
+  m_starred = sp_session_starred_create(m_session);
+
+  sp_playlist_callbacks callbacks = {
+    0,
+    0,
+    0,
+    0,
+    &playlist_state_changed_cb,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  };
+
+  sp_playlist_add_callbacks(m_starred, &callbacks, this);
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -234,6 +331,47 @@ void spotify_t::play_next_from_queue()
   else {
     m_audio_output.reset();
   }
+}
+
+// ----------------------------------------------------------------------------
+bool spotify_t::import_playlist(sp_playlist* pl)
+{
+  assert(sp_playlist_is_loaded(pl));
+
+  int num_tracks = sp_playlist_num_tracks(pl);
+
+  for (int i = 0; i < num_tracks; i++ )
+  {
+    sp_track* track = sp_playlist_track(pl, i);
+    if ( ! sp_track_is_loaded(track) ) {
+      LOG(DEBUG) << "waiting for tracks to load for playlist " << sp_playlist_name(pl);
+      return false;
+    }
+  }
+
+  LOG(INFO) << "importing playlist " << sp_playlist_name(pl);
+
+  for (int i = 0; i < num_tracks; i++ )
+  {
+    sp_track* track = sp_playlist_track(pl, i);
+
+    assert(sp_track_is_loaded(track));
+
+    sp_artist* artist;
+    sp_album* album;
+
+    LOG(INFO) << sp_track_id(track);
+
+    sp_artist_add_ref(artist = sp_track_artist(track, 0));
+    sp_album_add_ref(album = sp_track_album(track));
+
+    std::cout << "imported : " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(track) << std::endl;
+
+    sp_artist_release(artist);
+    sp_album_release(album);
+  }
+
+  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -398,3 +536,35 @@ void spotify_t::credentials_blob_updated_cb(sp_session *session, const char* blo
 //  std::cout << "callback:  " << __FUNCTION__ << std::endl;
 }
 
+// ----------------------------------------------------------------------------
+void spotify_t::playlist_state_changed_cb(sp_playlist* pl, void* userdata)
+{
+  LOG(INFO) << "callback:  " << __FUNCTION__;
+
+  if ( sp_playlist_is_loaded(pl) )
+  {
+  }
+}
+
+// ----------------------------------------------------------------------------
+static std::string sp_track_id(sp_track* track)
+{
+  char buf[128];
+
+  sp_link* link = sp_link_create_from_track(track, 0);
+  int l = sp_link_as_string(link, buf, sizeof(buf));
+  sp_link_release(link);
+
+  if ( static_cast<size_t>(l) >= sizeof(buf) ) {
+    LOG(ERROR) << "link string truncated";
+  }
+
+  std::string result(buf);
+
+  // We want the id without 'spotify:track:'
+  result = result.substr(result.rfind(':')+1);
+
+  LOG(DEBUG) << "get_track_id fron link=" << buf << " result=" << result;
+
+  return std::move(result);
+}

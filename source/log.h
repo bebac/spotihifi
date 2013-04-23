@@ -105,12 +105,12 @@ inline std::string logger::levelToString(level_t level)
 {
     switch(level)
     {
-    case FATAL:   return "FATAL -";
-    case ERROR:   return "ERROR -";
-    case WARNING: return "WARN  -";
-    case INFO:    return "INFO  -";
-    case DEBUG:   return "DEBUG -";
-    default:      return "  -   -";
+    case FATAL:   return "FATAL ";
+    case ERROR:   return "ERROR ";
+    case WARNING: return "WARN  ";
+    case INFO:    return "INFO  ";
+    case DEBUG:   return "DEBUG ";
+    default:      return "  -   ";
     }
 }
 

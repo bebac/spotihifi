@@ -33,14 +33,7 @@ public:
     {
         LOG(INFO) << "method: '" << method << "', params:" << params;
 
-        if ( method == "echo" )
-        {
-            json::array p = params.get<json::array>();
-            auto v = p.at(0).get<json::string>().str();
-
-            response.set("result", v);
-        }
-        else if ( method == "sync" )
+        if ( method == "sync" )
         {
             std::ifstream f("songs.json");
             std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
@@ -57,11 +50,34 @@ public:
 
             response.set("result", v);
         }
-        else if ( method == "play" ) {
+        else if ( method == "play" )
+        {
+            spotify.player_play();
+            response.set("result", "ok");
+        }
+        else if ( method == "pause" )
+        {
+            spotify.player_pause();
+            response.set("result", "ok");
+        }
+        else if ( method == "skip" )
+        {
+            spotify.player_skip();
+            response.set("result", "ok");
+        }
+        else if ( method == "stop" )
+        {
+            spotify.player_stop();
+            response.set("result", "ok");
+        }
+        else if ( method == "queue" )
+        {
             json::array p = params.get<json::array>();
             auto v = p.at(0).get<json::string>().str();
 
             spotify.player_play(v);
+
+            response.set("result", "ok");
         }
         else
         {
@@ -69,6 +85,8 @@ public:
 
             e.set("code", -32601);
             e.set("message", "Method not found");
+
+            LOG(ERROR) << response;
 
             response.set("error", e);
         }
