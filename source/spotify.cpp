@@ -12,6 +12,7 @@ spotify_t::spotify_t()
   m_running(true),
   m_session_next_timeout(0),
   m_track(0),
+  m_playlistcontainer(0),
   m_track_playing(false),
   m_audio_output(),
   m_thr{&spotify_t::main, this}
@@ -126,6 +127,23 @@ void spotify_t::player_stop()
 }
 
 // ----------------------------------------------------------------------------
+std::future<json::array> spotify_t::get_tracks()
+{
+  auto promise = std::make_shared<std::promise<json::array>>();
+  m_command_queue.push([=]()
+  {
+    json::array tracks;
+
+    for ( auto& t : m_tracks ) {
+      tracks.push_back(to_json(t.second));
+    }
+
+    promise->set_value(tracks);
+  });
+  return promise->get_future();
+}
+
+// ----------------------------------------------------------------------------
 void spotify_t::init()
 {
   sp_session_callbacks callbacks = {
@@ -193,18 +211,22 @@ void spotify_t::main()
     init();
     while ( m_running )
     {
-        auto cmd = m_command_queue.pop(std::chrono::milliseconds(500), [this]{
+        auto cmd = m_command_queue.pop(std::chrono::milliseconds(250), [this]
+        {
             //std::cout << "timeout" << std::endl;
-#if 0
-            if ( m_starred && sp_playlist_is_loaded(m_starred) ) {
-              if ( import_playlist(m_starred) )
-              {
-                LOG(INFO) << "starred tracks imported";
-                sp_playlist_release(m_starred);
-                m_starred = 0;
-              }
+             if ( m_playlists_for_import.size() > 0 )
+             {
+                sp_playlist* pl = m_playlists_for_import.front();
+                if ( sp_playlist_is_loaded(pl) )
+                {
+                  if ( import_playlist(pl) )
+                  {
+                    m_playlists_for_import.pop();
+                    sp_playlist_release(pl);
+                    LOG(INFO) << "m_tracks length=" << m_tracks.size();
+                  }
+                }
              }
-#endif
         });
         cmd();
     }
@@ -233,11 +255,13 @@ void spotify_t::logged_in_handler()
 
   m_session_logged_in = true;
 
-#if 0
   // Start loading the starred playlist.
-  m_starred = sp_session_starred_create(m_session);
+  sp_playlist* pl = sp_session_starred_create(m_session);
+  sp_playlist_add_ref(pl);
 
-  sp_playlist_callbacks callbacks = {
+  m_playlists_for_import.push(pl);
+
+  sp_playlist_callbacks playlist_callbacks = {
     0,
     0,
     0,
@@ -253,8 +277,27 @@ void spotify_t::logged_in_handler()
     0
   };
 
-  sp_playlist_add_callbacks(m_starred, &callbacks, this);
-#endif
+  sp_playlist_add_callbacks(pl, &playlist_callbacks, this);
+
+  // Load playlist container.
+  sp_playlistcontainer* m_playlistcontainer = sp_session_playlistcontainer(m_session);
+  sp_playlistcontainer_add_ref(m_playlistcontainer);
+
+  // TODO: Add callbacks in both situations to monitor for new playlists etc.
+  if ( sp_playlistcontainer_is_loaded(m_playlistcontainer) ) {
+    container_loaded_cb(m_playlistcontainer, this);
+  }
+  else
+  {
+    sp_playlistcontainer_callbacks container_callbacks = {
+      0,
+      0,
+      0,
+      &container_loaded_cb,
+    };
+
+    sp_playlistcontainer_add_callbacks(m_playlistcontainer, &container_callbacks, this);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -318,14 +361,29 @@ void spotify_t::play_next_from_queue()
     m_play_queue.pop_front();
 
     sp_link* link = sp_link_create_from_string(uri.c_str());
-    sp_track_add_ref(m_track = sp_link_as_track(link));
-    sp_link_release(link);
+    if ( link )
+    {
+      if ( sp_link_type(link) == SP_LINKTYPE_TRACK )
+      {
+        sp_track_add_ref(m_track = sp_link_as_track(link));
 
-    assert(m_track);
+        assert(m_track);
 
-    sp_error err = sp_track_error(m_track);
-    if (err == SP_ERROR_OK) {
-      track_loaded_handler();
+        sp_error err = sp_track_error(m_track);
+        if (err == SP_ERROR_OK) {
+          track_loaded_handler();
+        }
+      }
+      else {
+        LOG(ERROR) << "'" << uri.c_str() << "' is not a track";
+        play_next_from_queue();
+      }
+
+      sp_link_release(link);
+    }
+    else {
+      LOG(ERROR) << "failed to create link from '" << uri.c_str() << "'";
+      play_next_from_queue();
     }
   }
   else {
@@ -353,19 +411,27 @@ bool spotify_t::import_playlist(sp_playlist* pl)
 
   for (int i = 0; i < num_tracks; i++ )
   {
-    sp_track* track = sp_playlist_track(pl, i);
+    sp_track* sp_t = sp_playlist_track(pl, i);
 
-    assert(sp_track_is_loaded(track));
+    assert(sp_track_is_loaded(sp_t));
 
     sp_artist* artist;
     sp_album* album;
 
-    LOG(INFO) << sp_track_id(track);
+    sp_artist_add_ref(artist = sp_track_artist(sp_t, 0));
+    sp_album_add_ref(album = sp_track_album(sp_t));
 
-    sp_artist_add_ref(artist = sp_track_artist(track, 0));
-    sp_album_add_ref(album = sp_track_album(track));
+    track_t track;
 
-    std::cout << "imported : " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(track) << std::endl;
+    track.track_id(sp_track_id(sp_t));
+    track.title(sp_track_name(sp_t));
+    track.track_number(sp_track_index(sp_t));
+    track.artist(sp_artist_name(artist));
+    track.album(sp_album_name(album));
+
+    m_tracks[track.track_id()] = track;
+
+    //LOG(INFO) << to_json(track);
 
     sp_artist_release(artist);
     sp_album_release(album);
@@ -543,6 +609,44 @@ void spotify_t::playlist_state_changed_cb(sp_playlist* pl, void* userdata)
 
   if ( sp_playlist_is_loaded(pl) )
   {
+    LOG(INFO) << "playlist loaded " << sp_playlist_name(pl);
+  }
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::container_loaded_cb(sp_playlistcontainer *pc, void *userdata)
+{
+  LOG(INFO) << "callback:  " << __FUNCTION__;
+
+  spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
+
+  int num = sp_playlistcontainer_num_playlists(pc);
+
+  LOG(INFO) << "playlist container has " << num << " playlists";
+
+  for ( int i=0; i<num; i++ )
+  {
+    sp_playlist* pl = sp_playlistcontainer_playlist(pc, i);
+
+    self->m_playlists_for_import.push(pl);
+
+    sp_playlist_callbacks callbacks = {
+      0,
+      0,
+      0,
+      0,
+      &playlist_state_changed_cb,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    };
+
+    sp_playlist_add_callbacks(pl, &callbacks, userdata);
   }
 }
 
@@ -563,8 +667,6 @@ static std::string sp_track_id(sp_track* track)
 
   // We want the id without 'spotify:track:'
   result = result.substr(result.rfind(':')+1);
-
-  LOG(DEBUG) << "get_track_id fron link=" << buf << " result=" << result;
 
   return std::move(result);
 }

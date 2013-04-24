@@ -18,6 +18,7 @@
 
 // ----------------------------------------------------------------------------
 #include <fstream>
+#include <future>
 
 // ----------------------------------------------------------------------------
 class jsonrpc_spotify_handler : public jsonrpc_handler
@@ -35,6 +36,7 @@ public:
 
         if ( method == "sync" )
         {
+#if 0
             std::ifstream f("songs.json");
             std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 
@@ -47,6 +49,8 @@ public:
             catch (const std::exception& e) {
                 LOG(ERROR) << "parse error:" << e.what();
             }
+#endif
+            auto v = spotify.get_tracks().get();
 
             response.set("result", v);
         }

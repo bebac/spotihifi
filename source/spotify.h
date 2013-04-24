@@ -5,6 +5,7 @@
 // ----------------------------------------------------------------------------
 #include <cmdque.h>
 #include <audio_output_alsa.h>
+#include <track.h>
 
 // ----------------------------------------------------------------------------
 #include <iostream>
@@ -12,6 +13,8 @@
 #include <thread>
 #include <cassert>
 #include <deque>
+#include <unordered_map>
+#include <future>
 
 // ----------------------------------------------------------------------------
 #include <libspotify/api.h>
@@ -35,6 +38,8 @@ public:
 // ----------------------------------------------------------------------------
 class spotify_t
 {
+private:
+  typedef std::unordered_map<std::string, track_t> trackmap_t;
 public:
   spotify_t();
 public:
@@ -47,6 +52,8 @@ public:
   void player_skip();
   void player_pause();
   void player_stop();
+public:
+  std::future<json::array> get_tracks();
 public:
   void player_queue_clear()
   {
@@ -92,6 +99,8 @@ private:
   static void credentials_blob_updated_cb(sp_session *session, const char* blob);
   // playlist callbacks.
   static void playlist_state_changed_cb(sp_playlist* pl, void* userdata);
+  // playlist container callbacks.
+  static void container_loaded_cb(sp_playlistcontainer *pc, void *userdata);
 protected:
   sp_session* m_session;
   bool m_session_logged_in;
@@ -101,10 +110,12 @@ protected:
   std::deque<std::string> m_play_queue;
   sp_track* m_track;
   sp_playlistcontainer* m_playlistcontainer;
-  sp_playlist* m_starred;
+  //sp_playlist* m_starred;
+  std::queue<sp_playlist*> m_playlists_for_import;
   bool m_track_playing;
   std::shared_ptr<audio_output_t> m_audio_output;
   std::thread m_thr;
+  trackmap_t m_tracks;
 };
 
 // ----------------------------------------------------------------------------
