@@ -3,7 +3,6 @@
 #include <cmdque.h>
 #include <socket.h>
 #include <inet_socket_address.h>
-//#include <fd_set.h>
 #include <json.h>
 #include <jsonrpc.h>
 #include <jsonrpc_spotify_handler.h>
@@ -114,7 +113,7 @@ public:
             // Enter command loop.
             while ( m_running )
             {
-                auto cmd = m_cmdq.pop(std::chrono::seconds(5), [this]{
+                auto cmd = m_cmdq.pop(std::chrono::seconds(60), [this]{
                     LOG(DEBUG) << "client connection idle";
                     send(json::object());
                 });
