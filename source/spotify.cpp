@@ -465,9 +465,14 @@ bool spotify_t::import_playlist(sp_playlist* pl)
     track.artist(sp_artist_name(artist));
     track.album(sp_album_name(album));
 
-    m_tracks[track.track_id()] = track;
-
-    //LOG(INFO) << to_json(track);
+    sp_availability avail = sp_track_get_availability(m_session, sp_t);
+    if ( avail == SP_TRACK_AVAILABILITY_AVAILABLE )
+    {
+      m_tracks[track.track_id()] = track;
+    }
+    else {
+      LOG(WARNING) << "track unavailable " << to_json(track);
+    }
 
     sp_artist_release(artist);
     sp_album_release(album);
