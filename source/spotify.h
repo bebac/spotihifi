@@ -73,6 +73,7 @@ private:
   void end_of_track_handler();
   void process_events_handler();
   void play_next_from_queue();
+  void play_track(const std::string& uri);
   bool import_playlist(sp_playlist* pl);
 private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
@@ -110,12 +111,13 @@ protected:
   std::deque<std::string> m_play_queue;
   sp_track* m_track;
   sp_playlistcontainer* m_playlistcontainer;
-  //sp_playlist* m_starred;
   std::queue<sp_playlist*> m_playlists_for_import;
   bool m_track_playing;
   std::shared_ptr<audio_output_t> m_audio_output;
-  std::thread m_thr;
   trackmap_t m_tracks;
+  bool m_continued_playback;
+  std::vector<std::string> m_continued_playback_tracks;
+  std::thread m_thr;
 };
 
 // ----------------------------------------------------------------------------

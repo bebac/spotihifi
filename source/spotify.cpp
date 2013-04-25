@@ -2,6 +2,9 @@
 #include <log.h>
 
 // ----------------------------------------------------------------------------
+#include <random>
+
+// ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
 
 // ----------------------------------------------------------------------------
@@ -15,6 +18,7 @@ spotify_t::spotify_t()
   m_playlistcontainer(0),
   m_track_playing(false),
   m_audio_output(),
+  m_continued_playback(true),
   m_thr{&spotify_t::main, this}
 {
   LOG(DEBUG) << "constructed spotify instance " << this;
@@ -211,24 +215,37 @@ void spotify_t::main()
     init();
     while ( m_running )
     {
-        auto cmd = m_command_queue.pop(std::chrono::milliseconds(250), [this]
+      auto cmd = m_command_queue.pop(std::chrono::milliseconds(250), [this]
+      {
+        //std::cout << "timeout" << std::endl;
+        if ( m_session_logged_in && m_playlists_for_import.size() > 0 )
         {
-            //std::cout << "timeout" << std::endl;
-             if ( m_playlists_for_import.size() > 0 )
-             {
-                sp_playlist* pl = m_playlists_for_import.front();
-                if ( sp_playlist_is_loaded(pl) )
-                {
-                  if ( import_playlist(pl) )
-                  {
-                    m_playlists_for_import.pop();
-                    sp_playlist_release(pl);
-                    LOG(INFO) << "m_tracks length=" << m_tracks.size();
-                  }
-                }
-             }
-        });
-        cmd();
+          sp_playlist* pl = m_playlists_for_import.front();
+          if ( sp_playlist_is_loaded(pl) )
+          {
+            if ( import_playlist(pl) )
+            {
+              m_playlists_for_import.pop();
+              //sp_playlist_release(pl);
+              LOG(INFO) << "m_tracks length=" << m_tracks.size();
+            }
+          }
+        }
+        // TODO: Check somehow if playlist import is done.
+        if ( m_session_logged_in &&
+             m_track &&
+             m_continued_playback &&
+             m_continued_playback_tracks.size() == 0 )
+        {
+          LOG(INFO) << "building continued playback track set";
+
+          for ( auto& t : m_tracks ) {
+            m_continued_playback_tracks.push_back(t.second.track_id());
+          }
+          srand(time(0));
+        }
+      });
+      cmd();
     }
 
     LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
@@ -358,36 +375,55 @@ void spotify_t::play_next_from_queue()
   {
     auto uri = m_play_queue.front();
 
+    play_track(uri);
+
     m_play_queue.pop_front();
+  }
+  else if ( m_continued_playback && m_continued_playback_tracks.size() > 0 )
+  {
+    std::string uri("spotify:track:");
 
-    sp_link* link = sp_link_create_from_string(uri.c_str());
-    if ( link )
-    {
-      if ( sp_link_type(link) == SP_LINKTYPE_TRACK )
-      {
-        sp_track_add_ref(m_track = sp_link_as_track(link));
+    // Pick a track from the track set.
+    size_t index = rand() % (m_continued_playback_tracks.size());
 
-        assert(m_track);
+    uri += m_continued_playback_tracks[index];
 
-        sp_error err = sp_track_error(m_track);
-        if (err == SP_ERROR_OK) {
-          track_loaded_handler();
-        }
-      }
-      else {
-        LOG(ERROR) << "'" << uri.c_str() << "' is not a track";
-        play_next_from_queue();
-      }
+    LOG(INFO) << "continued playback uri " << uri;
 
-      sp_link_release(link);
-    }
-    else {
-      LOG(ERROR) << "failed to create link from '" << uri.c_str() << "'";
-      play_next_from_queue();
-    }
+    play_track(uri);
   }
   else {
     m_audio_output.reset();
+  }
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::play_track(const std::string& uri)
+{
+  sp_link* link = sp_link_create_from_string(uri.c_str());
+  if ( link )
+  {
+    if ( sp_link_type(link) == SP_LINKTYPE_TRACK )
+    {
+      sp_track_add_ref(m_track = sp_link_as_track(link));
+
+      assert(m_track);
+
+      sp_error err = sp_track_error(m_track);
+      if (err == SP_ERROR_OK) {
+        track_loaded_handler();
+      }
+    }
+    else {
+      LOG(ERROR) << "'" << uri.c_str() << "' is not a track";
+      play_next_from_queue();
+    }
+
+    sp_link_release(link);
+  }
+  else {
+    LOG(ERROR) << "failed to create link from '" << uri.c_str() << "'";
+    play_next_from_queue();
   }
 }
 
