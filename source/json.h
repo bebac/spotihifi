@@ -78,14 +78,13 @@ public:
   {
   }
 public:
-#if 0
   string(const std::string& s)
     :
     value_base(static_value_type()),
     m_value(s)
   {
   }
-#endif
+public:
   string(std::string&& s)
     :
     value_base(static_value_type()),
@@ -169,6 +168,10 @@ public:
   value(std::string&& s)
   {
     elm = std::make_shared<json::string>(json::string(std::move(s)));
+  }
+  value(const std::string& s)
+  {
+    elm = std::make_shared<json::string>(json::string(s));
   }
   value(double v)
   {

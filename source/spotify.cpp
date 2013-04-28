@@ -328,10 +328,17 @@ void spotify_t::track_loaded_handler()
     sp_artist_add_ref(artist = sp_track_artist(m_track, 0));
     sp_album_add_ref(album = sp_track_album(m_track));
 
-    LOG(INFO) << "Start playing " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(m_track);
+    sp_error err;
 
-    sp_session_player_load(m_session, m_track);
-    sp_session_player_play(m_session, 1);
+    if ( (err=sp_session_player_load(m_session, m_track)) != SP_ERROR_OK ) {
+      LOG(ERROR) << "sp_session_player_load error " << err;
+    }
+
+    if ( (err=sp_session_player_play(m_session, 1)) != SP_ERROR_OK ) {
+      LOG(ERROR) << "sp_session_player_play error " << err;
+    }
+
+    LOG(INFO) << "Start playing " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(m_track);
 
     m_track_playing = true;
 
@@ -434,16 +441,22 @@ bool spotify_t::import_playlist(sp_playlist* pl)
 
   int num_tracks = sp_playlist_num_tracks(pl);
 
+  std::string pl_name = sp_playlist_name(pl);
+
+  if ( pl_name.length() == 0 ) {
+    pl_name = "Starred";
+  }
+
   for (int i = 0; i < num_tracks; i++ )
   {
     sp_track* track = sp_playlist_track(pl, i);
     if ( ! sp_track_is_loaded(track) ) {
-      LOG(DEBUG) << "waiting for tracks to load for playlist " << sp_playlist_name(pl);
+      LOG(DEBUG) << "waiting for tracks to load for playlist " << pl_name;
       return false;
     }
   }
 
-  LOG(INFO) << "importing playlist " << sp_playlist_name(pl);
+  LOG(INFO) << "importing playlist " << pl_name;
 
   for (int i = 0; i < num_tracks; i++ )
   {
@@ -468,6 +481,13 @@ bool spotify_t::import_playlist(sp_playlist* pl)
     sp_availability avail = sp_track_get_availability(m_session, sp_t);
     if ( avail == SP_TRACK_AVAILABILITY_AVAILABLE )
     {
+      auto it = m_tracks.find(track.track_id());
+
+      if ( it != end(m_tracks) ) {
+        track.playlists((*it).second.playlists());
+      }
+      track.playlists_add(pl_name);
+
       m_tracks[track.track_id()] = track;
     }
     else {
