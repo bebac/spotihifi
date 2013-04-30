@@ -53,6 +53,9 @@ public:
   void player_pause();
   void player_stop();
 public:
+  void build_track_set_all();
+  void build_track_set_from_playlist(std::string playlist);
+public:
   std::future<json::array> get_tracks();
 public:
   void player_queue_clear()

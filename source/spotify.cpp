@@ -131,6 +131,38 @@ void spotify_t::player_stop()
 }
 
 // ----------------------------------------------------------------------------
+void spotify_t::build_track_set_all()
+{
+  m_command_queue.push([=]()
+  {
+    LOG(INFO) << "build_track_set_all";
+    m_continued_playback_tracks.clear();
+    for ( auto& t : m_tracks ) {
+        m_continued_playback_tracks.push_back(t.second.track_id());
+    }
+    srand(time(0));
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::build_track_set_from_playlist(std::string playlist)
+{
+  m_command_queue.push([=]()
+  {
+    LOG(INFO) << "build_track_set_from_playlist playlist=" << playlist;
+    m_continued_playback_tracks.clear();
+    for ( auto& t : m_tracks )
+    {
+      auto pl_set = t.second.playlists();
+      if ( pl_set.find(playlist) != pl_set.end() ) {
+        m_continued_playback_tracks.push_back(t.second.track_id());
+      }
+    }
+    srand(time(0));
+  });
+}
+
+// ----------------------------------------------------------------------------
 std::future<json::array> spotify_t::get_tracks()
 {
   auto promise = std::make_shared<std::promise<json::array>>();

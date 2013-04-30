@@ -56,6 +56,25 @@ public:
         }
         else if ( method == "play" )
         {
+            if ( params.is_object() )
+            {
+                json::object o = params.get<json::object>();
+
+                if ( o.has("playlist") )
+                {
+                  auto pl = o.get("playlist").get<json::string>().str();
+                  if ( pl.length() == 0 )
+                  {
+                    spotify.player_stop();
+                    spotify.build_track_set_all();
+                  }
+                  else
+                  {
+                    spotify.player_stop();
+                    spotify.build_track_set_from_playlist(pl);
+                  }
+                }
+            }
             spotify.player_play();
             response.set("result", "ok");
         }
