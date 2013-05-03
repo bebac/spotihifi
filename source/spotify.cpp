@@ -8,7 +8,7 @@
 static std::string sp_track_id(sp_track* track);
 
 // ----------------------------------------------------------------------------
-spotify_t::spotify_t()
+spotify_t::spotify_t(std::string audio_device_name)
   :
   m_session(0),
   m_session_logged_in(false),
@@ -17,6 +17,7 @@ spotify_t::spotify_t()
   m_track(0),
   m_playlistcontainer(0),
   m_track_playing(false),
+  m_audio_device_name(audio_device_name),
   m_audio_output(),
   m_continued_playback(true),
   m_thr{&spotify_t::main, this}
@@ -540,7 +541,7 @@ std::shared_ptr<audio_output_t> spotify_t::get_audio_output(int rate, int channe
   assert(channels == 2);
 
   if ( ! m_audio_output.get() ) {
-      m_audio_output = std::make_shared<audio_output_t>();
+      m_audio_output = std::make_shared<audio_output_t>(m_audio_device_name);
   }
 
   return m_audio_output;

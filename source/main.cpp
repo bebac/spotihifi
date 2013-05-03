@@ -16,6 +16,7 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <regex>
 
 // ----------------------------------------------------------------------------
 #include <signal.h>
@@ -28,15 +29,19 @@ public:
         :
         help(false),
         address("0.0.0.0"),
-        port(8081)
-
+        port(8081),
+        username(),
+        password(),
+        audio_device_name("default"),
+        conf_filename("spotihifi.conf")
     {
         add('h', "help", "display this message", help);
         add('a', "address", "local interface ip address to bind to", address, "IP");
         add('p', "port", "port to listen on", port, "INT");
         add('u', "username", "spotify username", username, "STRING");
-        add('k', "password", "spotify password", password, "STRING");
-
+        add(-1, "password", "spotify password", password, "STRING");
+        add(-1, "audio-device", "audio output device name eg \"plughw:0,0\"", audio_device_name, "STRING");
+        add('c', "conf", "configuration filename, default spotihifi.conf", conf_filename, "STRING");
     }
 public:
     bool        help;
@@ -44,7 +49,53 @@ public:
     int         port;
     std::string username;
     std::string password;
+    std::string audio_device_name;
+    std::string conf_filename;
 };
+
+// ----------------------------------------------------------------------------
+void parse_conf_file(const std::string& filename, options& options)
+{
+    std::ifstream f(filename);
+
+    if ( ! f.good() ) {
+        return;
+    }
+
+    std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+
+    json::value  doc;
+    json::parser parser(doc);
+
+    try
+    {
+        parser.parse(str.c_str(), str.length());
+
+        if ( !doc.is_object() ) {
+            throw std::runtime_error("configuration file must be a json object!");
+        }
+
+        json::object conf = doc.get<json::object>();
+
+        if ( options.username.length() == 0 && conf.has("spotify_username") ) {
+            options.username = conf.get("spotify_username").get<json::string>().str();
+        }
+
+        if ( options.password.length() == 0 && conf.has("spotify_password") ) {
+            options.password = conf.get("spotify_password").get<json::string>().str();
+        }
+
+        if ( options.audio_device_name == "default" && conf.has("audio_device_name") ) {
+            options.audio_device_name = conf.get("audio_device_name").get<json::string>().str();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::string err("configuration file parse error: ");
+        err += std::string(e.what());
+        throw std::runtime_error(err.c_str());
+    }
+}
 
 // ----------------------------------------------------------------------------
 class client_connection
@@ -267,14 +318,16 @@ int main(int argc, char *argv[])
         {
             std::cout << "Usage: main [OPTION...]" << std::endl
                       << std::endl
-                      << "Example tcp server" << std::endl
+                      << "spotihifi server" << std::endl
                       << std::endl
                       << "Available option:" << std::endl
                       << options << std::endl;
             return 0;
         }
 
-        spotify_t spotify;
+        parse_conf_file(options.conf_filename, options);
+
+        spotify_t spotify(options.audio_device_name);
 
         spotify.login(options.username, options.password);
 

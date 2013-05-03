@@ -12,6 +12,7 @@
 #include <cstring>
 #include <thread>
 #include <atomic>
+#include <string>
 
 // ----------------------------------------------------------------------------
 #include <alsa/asoundlib.h>
@@ -70,13 +71,14 @@ private:
 class audio_output_t
 {
 public:
-    audio_output_t()
+    audio_output_t(std::string device_name)
       :
       m_running(true),
       m_command_queue(),
       m_thr{&audio_output_t::main, this},
       m_handle(0),
-      m_queued_frames(0)
+      m_queued_frames(0),
+      m_device_name(std::move(device_name))
     {
     }
 public:
@@ -111,7 +113,7 @@ private:
     int err;
 
     //err = snd_pcm_open( &m_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0 );
-    err = snd_pcm_open( &m_handle, "default", SND_PCM_STREAM_PLAYBACK, 0 );
+    err = snd_pcm_open( &m_handle, m_device_name.c_str(), SND_PCM_STREAM_PLAYBACK, 0 );
     if ( err < 0 ) {
       LOG(ERROR) << "snd_pcm_open failed! " << snd_strerror(err);
     }
@@ -165,6 +167,7 @@ private:
   std::thread      m_thr;
   snd_pcm_t*       m_handle;
   std::atomic<int> m_queued_frames;
+  std::string      m_device_name;
 };
 
 // ----------------------------------------------------------------------------
