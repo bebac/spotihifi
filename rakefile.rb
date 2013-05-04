@@ -6,7 +6,7 @@ require_relative 'rakelib/executable'
 
 # -----------------------------------------------------------------------------
 spec = Rake::ExecutableSpecification.new do |s|
-    s.name = 'srv'
+    s.name = 'spotihifid'
     s.includes.add(
         'source',
         'vendor/program-options/include',
@@ -24,12 +24,12 @@ spec = Rake::ExecutableSpecification.new do |s|
     s.compiler_options += %w(-g -Wall -std=c++11)
 end
 # -----------------------------------------------------------------------------
-Rake::ExecutableTask.new(:srv, spec) do |exe|
+Rake::ExecutableTask.new(:spotihifid, spec) do |exe|
     exe.outputdir = 'build'
-    exe.intermediatedir = File.join(exe.outputdir, 'srv_obj')
+    exe.intermediatedir = File.join(exe.outputdir, 'spotihifid_obj')
 end
 # -----------------------------------------------------------------------------
 CLEAN.include('build')
 # -----------------------------------------------------------------------------
-task :default => [ :srv ]
+task :default => [ :spotihifid ]
 task :all => [ :default ]
