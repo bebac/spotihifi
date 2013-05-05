@@ -18,12 +18,14 @@ What do I need to get started
 It is written in c++ using c++11 features, so you'll need a fairly new gcc.
 It is known to compile with gcc 4.6.3 and above.
 
-The only external library dependency is libspotify. Get it from the spotify
-development site and place it in the vendor directory:
+You will need a spotify library that fits your platform. Get it from the
+spotify development site and place it in the vendor directory:
 
     vendor/libspotify-12.1.51-Linux-x86_64-release
 
-Make sure to get the one that fits your target platform.
+libasound is used to playback audio. On Ubuntu do:
+
+    sudo apt-get install libasound2-dev
 
 I have not included the spotify application key in the repository, so you
 need to apply for one and place the appkey.c in the source folder.
