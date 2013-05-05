@@ -1,0 +1,6 @@
+{
+  "spotify_username"  : "...",
+  "spotify_password"  : "...",
+
+  "audio_device_name" : "default"
+}
