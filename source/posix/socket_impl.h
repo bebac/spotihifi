@@ -1,11 +1,11 @@
 // ----------------------------------------------------------------------------
 //
-//     Filename:  socket_impl.h
+//        Filename:  socket_imple.h
 //
-//  Description:
+//          Author:  Benny Bach
 //
-//       Author:  Benny Bach
-//      Company:
+// --- Description: -----------------------------------------------------------
+//
 //
 // ----------------------------------------------------------------------------
 #ifndef __net__posix__socket_impl_h__
@@ -27,7 +27,6 @@ namespace posix
 // ----------------------------------------------------------------------------
 class socket_impl
 {
-  //friend class net::fd_set;
 public:
   socket_impl();
   socket_impl(int fd);

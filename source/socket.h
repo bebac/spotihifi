@@ -1,30 +1,23 @@
 // ----------------------------------------------------------------------------
 //
-//     Filename:  socket.h
+//        Filename:  socket.h
 //
-//  Description:
+//          Author:  Benny Bach
 //
-//       Author:  Benny Bach
-//      Company:
+// --- Description: -----------------------------------------------------------
+//
 //
 // ----------------------------------------------------------------------------
 #ifndef __net_socket_h__
 #define __net_socket_h__
 
 // ----------------------------------------------------------------------------
-#include <memory>
-//#include <sstream>
-//#include <stdexcept>
-//#include <iostream>
-//#include <chrono>
-
-//#include <string.h>
-//#include <assert.h>
-
 #include <socket_error.h>
 #include <inet_socket_address.h>
-
 #include <posix/socket_impl.h>
+
+// ----------------------------------------------------------------------------
+#include <memory>
 
 // ----------------------------------------------------------------------------
 using inet::tcp::posix::socket_impl;
@@ -40,8 +33,6 @@ namespace tcp
 // ----------------------------------------------------------------------------
 class socket
 {
-	//friend class net::posix::socket_impl;
-	//friend class fd_set;
 public:
 	socket();
 	socket(socket&& other);
@@ -52,13 +43,11 @@ public:
 	virtual ~socket() noexcept;
 public:
 	void   bind(const struct sockaddr *addr, socklen_t addrlen);
-	//void   bind(const ipv4_address& addr);
 	void   bind(const socket_address& addr);
 	void   listen(int backlog);
 	socket accept(struct sockaddr *addr, socklen_t *addrlen);
 	socket accept(socket_address& remote_addr);
 	void   connect(const struct sockaddr *serv_addr, socklen_t addrlen);
-	//void   connect(const ipv4_address& addr);
 	void   connect(const socket_address& addr);
 	size_t recv(void *buf, size_t len, int flags);
 	size_t send(const void *buf, size_t len, int flags);

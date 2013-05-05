@@ -1,4 +1,13 @@
 // ----------------------------------------------------------------------------
+//
+//        Filename:  audio_output_alsa.h
+//
+//          Author:  Benny Bach
+//
+// --- Description: -----------------------------------------------------------
+//
+//
+// ----------------------------------------------------------------------------
 #ifndef __audio_output_alsa_h__
 #define __audio_output_alsa_h__
 
@@ -21,38 +30,15 @@
 class audio_buffer_t
 {
 public:
-#if 0
-  audio_buffer_t(size_t len)
-  {
-    m_buf = new unsigned char[len];
-    m_len = len;
-  }
-#endif
-public:
   audio_buffer_t(const void* buf, size_t len)
   {
-    //std::cout << __FUNCTION__ << ": buf=" << reinterpret_cast<const void *>(buf) << ", len=" << len << std::endl;
     m_buf = new unsigned char[len];
     std::memcpy(m_buf, buf, len);
     m_len = len;
-    //std::cout << __FUNCTION__ << ": m_buf=" << reinterpret_cast<void *>(m_buf) << ", m_len=" << m_len << std::endl;
   }
-public:
-#if 0
-  audio_buffer_t(audio_buffer_t&& other)
-  {
-    std::cout << __FUNCTION__ << ": other.m_buf=" << reinterpret_cast<void *>(other.m_buf) << ", other.m_len=" << other.m_len << std::endl;
-    m_buf = std::move(other.m_buf);
-    m_len = std::move(other.m_len);
-    other.m_buf = 0;
-    other.m_len = 0;
-    std::cout << __FUNCTION__ << ": m_buf=" << reinterpret_cast<void *>(m_buf) << ", m_len=" << m_len << std::endl;
-  }
-#endif
 public:
   ~audio_buffer_t()
   {
-    //std::cout << __FUNCTION__ << ": m_buf=" << reinterpret_cast<void *>(m_buf) << ", m_len=" << m_len << std::endl;
     delete [] m_buf;
   }
 private:
@@ -71,24 +57,24 @@ private:
 class audio_output_t
 {
 public:
-    audio_output_t(std::string device_name)
-      :
-      m_running(true),
-      m_command_queue(),
-      m_thr{&audio_output_t::main, this},
-      m_handle(0),
-      m_queued_frames(0),
-      m_device_name(std::move(device_name))
-    {
-    }
+  audio_output_t(std::string device_name)
+    :
+    m_running(true),
+    m_command_queue(),
+    m_thr{&audio_output_t::main, this},
+    m_handle(0),
+    m_queued_frames(0),
+    m_device_name(std::move(device_name))
+  {
+  }
 public:
-    ~audio_output_t()
-    {
-      if ( m_running ) {
-        stop();
-      }
-      m_thr.join();
+  ~audio_output_t()
+  {
+    if ( m_running ) {
+      stop();
     }
+    m_thr.join();
+  }
 public:
   void write(const void* buffer, size_t len)
   {
@@ -129,22 +115,19 @@ private:
 private:
   void write_handler(std::shared_ptr<audio_buffer_t> buffer)
   {
-      //std::cout << "write" << std::endl;
-      snd_pcm_sframes_t frames = snd_pcm_writei(m_handle, buffer->data(), buffer->len()/4);
+    snd_pcm_sframes_t frames = snd_pcm_writei(m_handle, buffer->data(), buffer->len()/4);
 
-      if ( frames < 0 ) {
-        LOG(WARNING) << "underrun";
-        frames = snd_pcm_recover(m_handle, frames, 0);
-      }
+    if ( frames < 0 ) {
+      LOG(WARNING) << "underrun";
+      frames = snd_pcm_recover(m_handle, frames, 0);
+    }
 
-      if ( frames < 0 ) {
-        LOG(ERROR) << snd_strerror(frames);
-      }
-      else {
-        m_queued_frames -= frames;
-      }
-
-      //std::cout << "wrote " << frames << " frames" << std::endl;
+    if ( frames < 0 ) {
+      LOG(ERROR) << snd_strerror(frames);
+    }
+    else {
+      m_queued_frames -= frames;
+    }
   }
 private:
   void main()

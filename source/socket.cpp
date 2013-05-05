@@ -1,19 +1,16 @@
 // ----------------------------------------------------------------------------
 //
-//     Filename:  socket.cpp
+//        Filename:  socket.cpp
 //
-//  Description:
+//          Author:  Benny Bach
 //
-//       Author:  Benny Bach
-//      Company:
+// --- Description: -----------------------------------------------------------
+//
 //
 // ----------------------------------------------------------------------------
-#include <socket.h>
 
+#include <socket.h>
 #include <assert.h>
-//#include <unistd.h>
-//#include <sys/ioctl.h>
-//#include <errno.h>
 
 // ----------------------------------------------------------------------------
 namespace inet
@@ -42,15 +39,6 @@ socket::socket(int fd)
   pimpl(new socket_impl(fd))
 {
 }
-
-// ----------------------------------------------------------------------------
-#if 0
-socket::socket(const socket& other)
-  :
-  pimpl(std::move(other.pimpl))
-{
-}
-#endif
 
 // ----------------------------------------------------------------------------
 socket::~socket() noexcept
