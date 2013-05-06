@@ -24,6 +24,7 @@
 #include <deque>
 #include <unordered_map>
 #include <future>
+#include <atomic>
 
 // ----------------------------------------------------------------------------
 #include <libspotify/api.h>
@@ -124,7 +125,7 @@ protected:
   sp_track* m_track;
   sp_playlistcontainer* m_playlistcontainer;
   std::queue<sp_playlist*> m_playlists_for_import;
-  bool m_track_playing;
+  std::atomic<bool> m_track_playing;
   std::string m_audio_device_name;
   std::shared_ptr<audio_output_t> m_audio_output;
   trackmap_t m_tracks;

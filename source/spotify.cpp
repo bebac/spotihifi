@@ -621,10 +621,28 @@ int spotify_t::music_delivery(sp_session *session, const sp_audioformat *format,
 
   spotify_t* self = reinterpret_cast<spotify_t*>(sp_session_userdata(session));
 
-  size_t num_bytes = num_frames * sizeof(int16_t) * format->channels;
+  //
+  // NOTE: Since music_delivery is called from another thread synchronization is
+  //       important here. We could just allocate an audio_buffer here and send
+  //       to the spotify main thread, but it seems better to just send it straight
+  //       to the audio output thread.
+  //
+  //       I have seen an issue where we get a music_delivery when trying to stop
+  //       and are stopping the audio output thread. A call to get_audio_output
+  //       will then try start a new audio output thread. To avoid this we check
+  //       if m_track_playing is true before writing the audio output.
+  //
 
-  auto audio_output = self->get_audio_output(44100, format->channels);
-  audio_output->write(frames, num_bytes);
+  if ( self->m_track_playing )
+  {
+    size_t num_bytes = num_frames * sizeof(int16_t) * format->channels;
+
+    auto audio_output = self->get_audio_output(44100, format->channels);
+    audio_output->write(frames, num_bytes);
+  }
+  else {
+    LOG(WARNING) << "callback:  " << __FUNCTION__ << " while not playing";
+  }
 
   return num_frames;
 }
