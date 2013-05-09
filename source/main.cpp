@@ -325,12 +325,15 @@ int main(int argc, char *argv[])
 
     if ( options.help )
     {
-      std::cout << "Usage: main [OPTION...]" << std::endl
+      std::cout << "Usage: spotihifid [OPTION...]" << std::endl
                 << std::endl
-                << "spotihifi server" << std::endl
+                << "spotihifi daemon" << std::endl
                 << std::endl
                 << "Available option:" << std::endl
-                << options << std::endl;
+                << options << std::endl
+                << "This product uses SPOTIFY CORE but is not endorsed, certified or otherwise approved" << std::endl
+                << "in any way by Spotify. Spotify is the registered trade mark of the Spotify Group." << std::endl
+                << std::endl;
       return 0;
     }
 
