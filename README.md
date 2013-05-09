@@ -1,7 +1,7 @@
 SpotiHifi
 =========
 
-SpotiHifi is gui-less spotify client which is controlled by sending jsonrpc
+SpotiHifi is a gui-less spotify client which is controlled by sending jsonrpc
 requests through a tcp connection. On startup the spotihifi daemon imports
 tracks from all your playlists. A spotihifi client can then connect to the
 spotihifi daemon to get the full set of tracks and control playback. The
@@ -75,11 +75,16 @@ THIS IS IN EARLY DEVELOPMENT AND WILL LIKELY CHANGE A LOT!
 
 ### Sync
 
-When a client connect it should issue a sync command to get a list of all tracks
-known to the spotihifi daemon
+When a client connects it should issue a sync command to get a list of all tracks
+known to the spotihifi daemon. The sync response will include an incarnation token
+and a transaction count which the client must include in subsequent sync requests
+to only receive partial updates.
 
-    --> { "jsonrpc" : "2.0", "method" : "sync", "params" : [], "id" : 1 }
-    <-- { "jsonrpc" : "2.0", "result" :
+> NOTE: The transaction count is not currenly used.
+
+
+    --> { "jsonrpc" : "2.0", "method" : "sync", "params": { "incarnation" : "-1", "transaction" : "-1" }, "id" : 1 }
+    <-- { "jsonrpc" : "2.0", "result" : { "incarnation" : "-1080086476", "transaction" : "0", "tracks" :
             [
               {
                 "album":"Sounds So Good",
@@ -105,9 +110,14 @@ known to the spotihifi daemon
                 "title":"Sic 'Em On A Chicken",
                 "track_id":"6QBkPN3ARmAFVtVAk7oYN9"
               }
-            ],
+            ] },
           "id" : 1
         }
+
+    # On a subsequent sync request the response will contain no tracks indicating that everything
+    # is up to date.
+    --> { "jsonrpc" : "2.0", "method" : "sync", "params": { "incarnation" : "-1080086476", "transaction" : "0" }, "id" : 1 }
+    <-- { "jsonrpc" : "2.0", "result" : { "incarnation" : "-1080086476", "transaction" : "0" }, "id" : 1 }
 
 
 It is up to the client to organize the tracks and present them to the user. One

@@ -29,6 +29,13 @@ spotify_t::spotify_t(std::string audio_device_name)
   m_track_playing(false),
   m_audio_device_name(audio_device_name),
   m_audio_output(),
+  /////
+  // Tracks database.
+  m_tracks(),
+  m_tracks_initialized(false), // Not used yet.
+  m_tracks_incarnation(reinterpret_cast<long long>(this)),
+  m_tracks_transaction(0), // Always zero for now.
+  /////
   m_continued_playback(true),
   m_thr{&spotify_t::main, this}
 {
@@ -174,20 +181,39 @@ void spotify_t::build_track_set_from_playlist(std::string playlist)
 }
 
 // ----------------------------------------------------------------------------
-std::future<json::array> spotify_t::get_tracks()
+std::future<json::object> spotify_t::get_tracks(long long incarnation, long long transaction)
 {
-  auto promise = std::make_shared<std::promise<json::array>>();
+  auto promise = std::make_shared<std::promise<json::object>>();
   m_command_queue.push([=]()
   {
-    json::array tracks;
+    json::object result;
 
-    for ( auto& t : m_tracks ) {
-      tracks.push_back(to_json(t.second));
+    LOG(INFO) << "get_tracks"
+              << " m_tracks_incarnation=" << m_tracks_incarnation
+              << ", incarnation=" << incarnation
+              << ", m_tracks_transaction=" << m_tracks_transaction
+              << ", transaction=" << transaction;
+
+    result.set("incarnation", std::to_string(m_tracks_incarnation));
+    result.set("transaction", std::to_string(m_tracks_transaction));
+
+    if ( incarnation != m_tracks_incarnation )
+    {
+      // If incarnation has changed send back the complete track list.
+      json::array tracks;
+      for ( auto& t : m_tracks ) {
+        tracks.push_back(to_json(t.second));
+      }
+      result.set("tracks", tracks);
     }
-
-    promise->set_value(tracks);
+    else
+    {
+      // TODO: Handle transaction count to only send back what has been updated.
+    }
+    promise->set_value(result);
   });
   return promise->get_future();
+
 }
 
 // ----------------------------------------------------------------------------

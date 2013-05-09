@@ -66,7 +66,7 @@ public:
   void build_track_set_all();
   void build_track_set_from_playlist(std::string playlist);
 public:
-  std::future<json::array> get_tracks();
+  std::future<json::object> get_tracks(long long incarnation = -1, long long transaction = -1);
 public:
   void player_queue_clear()
   {
@@ -128,7 +128,13 @@ protected:
   std::atomic<bool> m_track_playing;
   std::string m_audio_device_name;
   std::shared_ptr<audio_output_t> m_audio_output;
+  /////
+  // Tracks database.
   trackmap_t m_tracks;
+  bool m_tracks_initialized;
+  long long m_tracks_incarnation;
+  long long m_tracks_transaction;
+  /////
   bool m_continued_playback;
   std::vector<std::string> m_continued_playback_tracks;
   std::thread m_thr;

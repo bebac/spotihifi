@@ -36,7 +36,25 @@ public:
 
     if ( method == "sync" )
     {
-      auto v = spotify.get_tracks().get();
+      // TODO: Error handling.
+      json::object o = params.get<json::object>();
+
+      long long incarnation = -1;
+      long long transaction = -1;
+
+      if ( o.has("incarnation") ) {
+        incarnation = std::stol(o.get("incarnation").get<json::string>().str());
+      }
+
+      if ( o.has("transaction") ) {
+        transaction = std::stol(o.get("transaction").get<json::string>().str());
+      }
+
+      auto v = spotify.get_tracks(incarnation, transaction).get();
+
+      LOG(INFO) << "sync result"
+                << " incarnation=" << v.get("incarnation").get<json::string>()
+                << ", transaction=" << v.get("transaction").get<json::string>();
 
       response.set("result", v);
     }
