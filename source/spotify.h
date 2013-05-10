@@ -51,7 +51,7 @@ class spotify_t
 private:
   typedef std::unordered_map<std::string, track_t> trackmap_t;
 public:
-  spotify_t(std::string audio_device_name);
+  spotify_t(std::string audio_device_name, std::string cache_dir);
 public:
   ~spotify_t();
 public:
@@ -128,6 +128,7 @@ protected:
   std::atomic<bool> m_track_playing;
   std::string m_audio_device_name;
   std::shared_ptr<audio_output_t> m_audio_output;
+  std::string m_cache_dir;
   /////
   // Tracks database.
   trackmap_t m_tracks;

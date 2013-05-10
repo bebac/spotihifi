@@ -42,7 +42,8 @@ public:
     username(),
     password(),
     audio_device_name("default"),
-    conf_filename("spotihifi.conf")
+    conf_filename("spotihifi.conf"),
+    cache_dir("spotihifi_cache")
   {
     add('h', "help", "display this message", help);
     add('a', "address", "local interface ip address to bind to", address, "IP");
@@ -60,6 +61,7 @@ public:
   std::string password;
   std::string audio_device_name;
   std::string conf_filename;
+  std::string cache_dir;
 };
 
 // ----------------------------------------------------------------------------
@@ -96,6 +98,10 @@ void parse_conf_file(const std::string& filename, options& options)
 
     if ( options.audio_device_name == "default" && conf.has("audio_device_name") ) {
       options.audio_device_name = conf.get("audio_device_name").get<json::string>().str();
+    }
+
+    if ( conf.has("cache_dir") ) {
+      options.cache_dir = conf.get("cache_dir").get<json::string>().str();
     }
   }
   catch (const std::exception& e)
@@ -339,7 +345,7 @@ int main(int argc, char *argv[])
 
     parse_conf_file(options.conf_filename, options);
 
-    spotify_t spotify(options.audio_device_name);
+    spotify_t spotify(options.audio_device_name, options.cache_dir);
 
     spotify.login(options.username, options.password);
 

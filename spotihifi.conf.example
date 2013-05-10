@@ -2,5 +2,7 @@
   "spotify_username"  : "...",
   "spotify_password"  : "...",
 
-  "audio_device_name" : "default"
+  "audio_device_name" : "default",
+
+  "cache_dir"         : "/tmp/spotihifi_cache"
 }

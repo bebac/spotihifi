@@ -18,7 +18,7 @@
 static std::string sp_track_id(sp_track* track);
 
 // ----------------------------------------------------------------------------
-spotify_t::spotify_t(std::string audio_device_name)
+spotify_t::spotify_t(std::string audio_device_name, std::string cache_dir)
   :
   m_session(0),
   m_session_logged_in(false),
@@ -29,6 +29,7 @@ spotify_t::spotify_t(std::string audio_device_name)
   m_track_playing(false),
   m_audio_device_name(audio_device_name),
   m_audio_output(),
+  m_cache_dir(cache_dir),
   /////
   // Tracks database.
   m_tracks(),
@@ -244,8 +245,8 @@ void spotify_t::init()
 
   config.callbacks = &callbacks;
   config.api_version = SPOTIFY_API_VERSION;
-  config.cache_location = "tmp";
-  config.settings_location = "tmp";
+  config.cache_location = m_cache_dir.c_str();
+  config.settings_location = m_cache_dir.c_str();
   config.application_key = g_appkey;
   config.application_key_size = g_appkey_size;
   config.user_agent = "spotd";

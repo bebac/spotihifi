@@ -16,7 +16,7 @@ EOF
 LAUNCH = <<eos
 #!/bin/bash
 INSTDIR=/usr/share/spotihifi
-LD_LIBRARY_PATH+=$INSTDIR/lib/ $INSTDIR/bin/spotihifid --help
+LD_LIBRARY_PATH+=$INSTDIR/lib/ $INSTDIR/bin/spotihifid -c /etc/spotihifi.conf
 eos
 
 PKG_DIRS = %w(debian/DEBIAN
