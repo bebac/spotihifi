@@ -121,7 +121,7 @@ to only receive partial updates.
 
 
 It is up to the client to organize the tracks and present them to the user. One
-possible solution is to put the tracks into an sqlite database. _TODO: insert reference to android spotihifi app_
+possible solution is to put the tracks into an sqlite database. https://github.com/bebac/spotihifi-android
 
 ### Queue
 
