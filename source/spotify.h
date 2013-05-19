@@ -46,6 +46,13 @@ public:
 };
 
 // ----------------------------------------------------------------------------
+class player_observer_t
+{
+public:
+  virtual void player_state_event(json::object event) = 0;
+};
+
+// ----------------------------------------------------------------------------
 class spotify_t
 {
 private:
@@ -67,6 +74,9 @@ public:
   void build_track_set_from_playlist(std::string playlist);
 public:
   std::future<json::object> get_tracks(long long incarnation = -1, long long transaction = -1);
+public:
+  void observer_attach(std::shared_ptr<player_observer_t> observer);
+  void observer_detach(std::shared_ptr<player_observer_t> observer);
 public:
   void player_queue_clear()
   {
@@ -91,6 +101,8 @@ private:
 private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
   std::shared_ptr<audio_output_t> get_audio_output();
+private:
+  void player_state_notify(std::string state, track_t* track = 0);
 private:
   // session callbacks.
   static void logged_in_cb(sp_session *session, sp_error error);
@@ -138,6 +150,10 @@ protected:
   /////
   bool m_continued_playback;
   std::vector<std::string> m_continued_playback_tracks;
+  /////
+  // Observers
+  std::vector<std::shared_ptr<player_observer_t>> observers;
+  /////
   std::thread m_thr;
 };
 

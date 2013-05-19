@@ -113,16 +113,17 @@ void parse_conf_file(const std::string& filename, options& options)
 }
 
 // ----------------------------------------------------------------------------
-class client_connection
+class client_connection : public notify_sender_t
 {
 public:
-  client_connection(inet::tcp::socket socket, jsonrpc_handler* handler)
+  client_connection(inet::tcp::socket socket, jsonrpc_spotify_handler* handler)
     :
     m_socket(std::move(socket)),
     m_handler(handler),
     m_cmdq(),
     m_running(false)
   {
+    m_handler->player_observer_attach(m_handler);
   }
 public:
   client_connection(client_connection&& other)
@@ -133,6 +134,13 @@ public:
     m_cmdq(),
     m_running(false)
   {
+  }
+public:
+  ~client_connection()
+  {
+    if ( m_handler.get() ) {
+      m_handler->player_observer_detach(m_handler);
+    }
   }
 private:
   client_connection(const client_connection&) = delete;
@@ -159,6 +167,11 @@ public:
       } while ( sent < buf.size() );
     });
   }
+public:
+  void send_notify(json::value message)
+  {
+    send(message);
+  }
 private:
   void disconnect()
   {
@@ -173,6 +186,9 @@ public:
 
     // Start receive thread.
     std::thread receive_thr(&client_connection::receive_loop, this);
+
+    // Let the handler send notifies using this connection.
+    m_handler->set_notify_sender(this);
 
     try
     {
@@ -299,7 +315,7 @@ private:
   }
 private:
   inet::tcp::socket m_socket;
-  std::unique_ptr<jsonrpc_handler> m_handler;
+  std::shared_ptr<jsonrpc_spotify_handler> m_handler;
   cmdque_t m_cmdq;
   bool m_running;
 };

@@ -13,6 +13,7 @@
 
 // ----------------------------------------------------------------------------
 #include <random>
+#include <algorithm>
 
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
@@ -61,6 +62,7 @@ void spotify_t::stop()
   {
     if ( m_track_playing )
     {
+      player_state_notify("stopped");
       sp_session_player_unload(m_session);
       m_track_playing = false;
     }
@@ -81,7 +83,10 @@ void spotify_t::login(const std::string& username, const std::string& password)
 void spotify_t::player_play()
 {
   m_command_queue.push([=]() {
-    if ( m_session_logged_in && m_track ) {
+    if ( m_session_logged_in && m_track )
+    {
+      // TODO: Include track.
+      player_state_notify("playing");
       sp_session_player_play(m_session, 1);
     }
     else {
@@ -105,7 +110,9 @@ void spotify_t::player_play(const std::string& uri)
 void spotify_t::player_pause()
 {
   m_command_queue.push([=]() {
-    if ( m_session_logged_in && m_track ) {
+    if ( m_session_logged_in && m_track )
+    {
+      player_state_notify("paused");
       sp_session_player_play(m_session, 0);
     }
   });
@@ -118,6 +125,8 @@ void spotify_t::player_skip()
   {
     if ( m_track_playing )
     {
+      // TODO: Include track.
+      player_state_notify("skip");
       sp_session_player_unload(m_session);
       m_track_playing = false;
     }
@@ -137,6 +146,7 @@ void spotify_t::player_stop()
   {
     if ( m_track_playing )
     {
+      player_state_notify("stopped");
       sp_session_player_unload(m_session);
       m_track_playing = false;
     }
@@ -214,7 +224,27 @@ std::future<json::object> spotify_t::get_tracks(long long incarnation, long long
     promise->set_value(result);
   });
   return promise->get_future();
+}
 
+// ----------------------------------------------------------------------------
+void spotify_t::observer_attach(std::shared_ptr<player_observer_t> observer)
+{
+  m_command_queue.push([=]()
+  {
+    observers.push_back(observer);
+    LOG(INFO) << "attached observer " << observer << " (" << observers.size() << ")";
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::observer_detach(std::shared_ptr<player_observer_t> observer)
+{
+  m_command_queue.push([=]()
+  {
+    auto it = std::find(observers.begin(), observers.end(), observer);
+    observers.erase(it);
+    LOG(INFO) << "detached observer " << observer << " (" << observers.size() << ")";
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -408,7 +438,16 @@ void spotify_t::track_loaded_handler()
       LOG(ERROR) << "sp_session_player_play error " << err;
     }
 
-    LOG(INFO) << "Start playing " << sp_artist_name(artist) << " - " << sp_album_name(album) << " - " << sp_track_name(m_track);
+    LOG(INFO) << "Start playing " << sp_track_name(m_track) << " - " << sp_artist_name(artist) << " - " << sp_album_name(album);
+
+    auto it = m_tracks.find(sp_track_id(m_track));
+
+    if ( it != end(m_tracks) ) {
+      player_state_notify("playing", &(*it).second);
+    }
+    else {
+      LOG(ERROR) << "track id " << sp_track_id(m_track) << " not found in database!";
+    }
 
     m_track_playing = true;
 
@@ -469,7 +508,9 @@ void spotify_t::play_next_from_queue()
 
     play_track(uri);
   }
-  else {
+  else
+  {
+    player_state_notify("stopped");
     m_audio_output.reset();
   }
 }
@@ -545,6 +586,7 @@ bool spotify_t::import_playlist(sp_playlist* pl)
     track.track_id(sp_track_id(sp_t));
     track.title(sp_track_name(sp_t));
     track.track_number(sp_track_index(sp_t));
+    track.duration(sp_track_duration(sp_t));
     track.artist(sp_artist_name(artist));
     track.album(sp_album_name(album));
 
@@ -588,6 +630,29 @@ std::shared_ptr<audio_output_t> spotify_t::get_audio_output(int rate, int channe
 std::shared_ptr<audio_output_t> spotify_t::get_audio_output()
 {
   return m_audio_output;
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::player_state_notify(std::string state, track_t* track)
+{
+  for ( auto& observer : observers )
+  {
+    if ( observer.get() )
+    {
+      json::object event;
+
+      event.set("state", state);
+
+      if ( track ) {
+        event.set("track", to_json(*track).get<json::object>());
+      }
+
+      observer->player_state_event(std::move(event));
+    }
+    else {
+      LOG(ERROR) << "observer is null";
+    }
+  }
 }
 
 //

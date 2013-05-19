@@ -21,13 +21,40 @@
 #include <future>
 
 // ----------------------------------------------------------------------------
-class jsonrpc_spotify_handler : public jsonrpc_handler
+class notify_sender_t
+{
+public:
+  virtual void send_notify(json::value message) = 0;
+};
+
+// ----------------------------------------------------------------------------
+class jsonrpc_spotify_handler : public jsonrpc_handler, public player_observer_t
 {
 public:
   jsonrpc_spotify_handler(spotify_t& spotify)
     :
-    spotify(spotify)
+    spotify(spotify),
+    notify_sender(0)
   {
+  }
+public:
+  ~jsonrpc_spotify_handler()
+  {
+  }
+public:
+  void set_notify_sender(notify_sender_t* sender)
+  {
+    notify_sender = sender;
+  }
+public:
+  void player_observer_attach(std::shared_ptr<player_observer_t> observer)
+  {
+    spotify.observer_attach(observer);
+  }
+public:
+  void player_observer_detach(std::shared_ptr<player_observer_t> observer)
+  {
+    spotify.observer_detach(observer);
   }
 public:
   virtual void call_method(const std::string& method, json::value params, json::object& response)
@@ -118,8 +145,32 @@ public:
       response.set("error", e);
     }
   }
+public:
+  //
+  // Implement the player observer interface.
+  //
+  // NOTE: The player_state_event callback is called from spotify service context.
+  //       There should probably be some sort of synchronization to prevent the
+  //       the notify_sender from being unset after checking whether it is set.
+  //       Since it is not currently unset I'll let it slide.
+  //
+  void player_state_event(json::object event)
+  {
+    LOG(INFO) << __FUNCTION__ << " " << event;
+    if ( notify_sender )
+    {
+      json::object notify;
+
+      notify.set("jsonrpc", "2.0");
+      notify.set("method", "pb-event");
+      notify.set("params", std::move(event));
+
+      notify_sender->send_notify(std::move(notify));
+    }
+  }
 private:
   spotify_t& spotify;
+  notify_sender_t* notify_sender;
 };
 
 // ----------------------------------------------------------------------------
