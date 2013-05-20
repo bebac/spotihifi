@@ -159,3 +159,26 @@ To start playback from all tracks:
 
     --> { "jsonrpc" : "2.0", "method" : "stop", "params" : [], "id" : 6 }
     <-- { "jsonrpc" : "2.0", "result" : "ok", "id" : 6 }
+
+### Player State Events
+
+    <-- { "jsonrpc" : "2.0", "method" : "pb-event", "params" : { "state" : "playing", "track":
+          {
+            "track_id" : "0Xa5kdeceI3sTeeJ0tbrgj",
+            "duration" : 202000,
+            "title" : "Long Leg Sally",
+            "playlists" : ["The Sandmen – Sleepyhead"],
+            "track_number" : 7,
+            "artist" : "The Sandmen",
+            "album" : "Sleepyhead"
+          }
+        }
+
+    # When continuing playback after pause
+    <-- { "jsonrpc" : "2.0", "method" : "pb-event", "params" : { "state" : "playing" }
+
+    <-- { "jsonrpc" : "2.0", "method" : "pb-event", "params" : { "state" : "paused" }
+    <-- { "jsonrpc" : "2.0", "method" : "pb-event", "params" : { "state" : "stopped" }
+    <-- { "jsonrpc" : "2.0", "method" : "pb-event", "params" : { "state" : "skip" }
+
+    # NOTE: Still needs some work in order to show elapsed and remaining time.
