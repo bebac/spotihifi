@@ -57,14 +57,14 @@ private:
 class audio_output_t
 {
 public:
-  audio_output_t(std::string device_name)
+  audio_output_t(const std::string& device_name)
     :
     m_running(true),
     m_command_queue(),
-    m_thr{&audio_output_t::main, this},
     m_handle(0),
     m_queued_frames(0),
-    m_device_name(std::move(device_name))
+    m_device_name(device_name),
+    m_thr{&audio_output_t::main, this}
   {
   }
 public:
@@ -147,10 +147,10 @@ private:
 private:
   bool             m_running;
   cmdque_t         m_command_queue;
-  std::thread      m_thr;
   snd_pcm_t*       m_handle;
   std::atomic<int> m_queued_frames;
   std::string      m_device_name;
+  std::thread      m_thr;
 };
 
 // ----------------------------------------------------------------------------
