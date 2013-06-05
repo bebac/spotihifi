@@ -75,6 +75,7 @@ module SpotifyClientConsole
   def run
     # Connect to server.
     server = JsonRpc::Server.new("127.0.0.1", 8081)
+    #server = JsonRpc::Server.new("192.168.1.103", 8081)
     # Enter command loop.
     while line = Readline.readline('spc$ ', true)
       if line.length > 0
@@ -97,11 +98,17 @@ module SpotifyClientConsole
     end
 
     def sync(server, s)
-      msg = { :jsonrpc => "2.0", :method => "sync", :params => [], :id => 2 }.to_json
+      msg = { :jsonrpc => "2.0", :method => "sync", :params => { :incarnation => -1.to_s, :transaction => -1.to_s }, :id => 2 }.to_json
       result = server.execute(msg)
-      songs = result.fetch("result") { fail(result["error"].inspect) }
+      result = result.fetch("result") { fail(result["error"].inspect) }
+      songs = result["tracks"]
+      #puts songs
       puts songs.length
-      #puts s
+#      File.open("tmp.json", "w") do |f|
+#        songs.each do |song|
+#          f.puts song.to_json
+#        end
+#      end
     end
 
     def exit(server, s)
