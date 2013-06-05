@@ -97,14 +97,20 @@ private:
   void init()
   {
     int err;
+    int open_retries = 0;
 
-    //err = snd_pcm_open( &m_handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0 );
-    err = snd_pcm_open( &m_handle, m_device_name.c_str(), SND_PCM_STREAM_PLAYBACK, 0 );
-    if ( err < 0 ) {
-      LOG(ERROR) << "snd_pcm_open failed! " << snd_strerror(err);
-    }
-    else {
-      LOG(DEBUG) << "snd_pcm_open ok";
+    while ( open_retries < 10 )
+    {
+      err = snd_pcm_open( &m_handle, m_device_name.c_str(), SND_PCM_STREAM_PLAYBACK, 0 );
+      if ( err < 0 ) {
+        LOG(ERROR) << "snd_pcm_open failed! " << snd_strerror(err);
+        open_retries++;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+      else {
+        LOG(DEBUG) << "snd_pcm_open ok";
+        break;
+      }
     }
 
     err = snd_pcm_set_params(m_handle, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED, 2, 44100, 0, 500000);
