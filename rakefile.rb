@@ -21,7 +21,8 @@ spec = Rake::ExecutableSpecification.new do |s|
         'source/appkey.c'
     )
     s.libraries += %w(asound spotify)
-    s.compiler_options += %w(-g -Wall -std=c++11)
+    #s.compiler_options += %w(-g -Wall -std=c++11)
+    s.compiler_options += %w(-O2 -Wall -std=c++11)
 end
 # -----------------------------------------------------------------------------
 Rake::ExecutableTask.new(:spotihifid, spec) do |exe|

@@ -33,7 +33,7 @@ task :dpkg do
   end
 
   name = "spotihifi"
-  version = "0.0-1"
+  version = "0.1-0"
   architecture = %x[dpkg --print-architecture].strip
 
   # Create debian control file.
