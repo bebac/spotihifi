@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 //
-//        Filename:  program_options/exception.cpp
+//        Filename:  exception.cpp
 //
 //          Author:  Benny Bach
 //

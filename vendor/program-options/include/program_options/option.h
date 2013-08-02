@@ -29,17 +29,17 @@ public:
 public:
     option(char sname, const std::string& lname, const std::string& desc, ExtractorFunc extractor, const std::string& meta);
 public:
-    const char         short_name()  const { return sname; }
-    const std::string& long_name()   const { return lname; }
-    const std::string& description() const { return desc;  }
+    const char         short_name()  const { return sname_; }
+    const std::string& long_name()   const { return lname_; }
+    const std::string& description() const { return desc_;  }
     const std::string& meta()        const { return meta_; }
 public:
     void extract(std::istream& is);
 private:
-    char          sname;
-    std::string   lname;
-    std::string   desc;
-    ExtractorFunc extractor;
+    char          sname_;
+    std::string   lname_;
+    std::string   desc_;
+    ExtractorFunc extractor_;
     std::string   meta_;
 };
 

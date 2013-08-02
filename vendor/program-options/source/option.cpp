@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 //
-//        Filename:  program_options/option.cpp
+//        Filename:  option.cpp
 //
 //          Author:  Benny Bach
 //
@@ -21,10 +21,10 @@ namespace program_options
 // ----------------------------------------------------------------------------
 option::option(char sname, const std::string& lname, const std::string& desc, ExtractorFunc extractor, const std::string& meta)
     :
-    sname(sname),
-    lname(lname),
-    desc(desc),
-    extractor(extractor),
+    sname_(sname),
+    lname_(lname),
+    desc_(desc),
+    extractor_(extractor),
     meta_(meta)
 {
 }
@@ -32,7 +32,7 @@ option::option(char sname, const std::string& lname, const std::string& desc, Ex
 // ----------------------------------------------------------------------------
 void option::extract(std::istream& is)
 {
-    extractor(is);
+    extractor_(is);
 }
 
 // ----------------------------------------------------------------------------
@@ -43,11 +43,11 @@ std::ostream& operator<<(std::ostream& os, const option& option)
     unsigned    name_col_width = 40;
     std::string name_col;
 
-    if ( option.sname != -1 ) {
-        name_col = std::string("  -") + option.sname + ", --" + option.lname;
+    if ( option.short_name() != -1 ) {
+        name_col = std::string("  -") + option.short_name() + ", --" + option.long_name();
     }
     else {
-        name_col = std::string("    ") + "  --" + option.lname;
+        name_col = std::string("    ") + "  --" + option.long_name();
     }
 
     if ( option.meta().length() > 0 ) {
@@ -59,16 +59,18 @@ std::ostream& operator<<(std::ostream& os, const option& option)
         os << endl << setw(name_col_width) << "";
     }
 
-    size_t pos0 = 0;
-    size_t pos1 = option.desc.find('\n');
+    const std::string& desc = option.description();
 
-    os << option.desc.substr(pos0, pos1-pos0);
+    size_t pos0 = 0;
+    size_t pos1 = desc.find('\n');
+
+    os << desc.substr(pos0, pos1-pos0);
 
     while ( pos1 != std::string::npos )
     {
         pos0 = pos1+1;
-        pos1 = option.desc.find('\n', pos0);
-        os << endl << setw(name_col_width) << "" << option.desc.substr(pos0, pos1-pos0);
+        pos1 = desc.find('\n', pos0);
+        os << endl << setw(name_col_width) << "" << desc.substr(pos0, pos1-pos0);
     }
 
     return os;

@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 //
-//        Filename:  argv_streambuf.h
+//        Filename:  program_options.h
 //
 //          Author:  Benny Bach
 //

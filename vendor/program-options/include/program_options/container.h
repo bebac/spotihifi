@@ -22,23 +22,58 @@
 namespace program_options
 {
 
+// ----------------------------------------------------------------------------
+template<typename T>
+struct extractor {
+    extractor(T& value) : value_(value) {}
+public:
+    void operator()(std::istream& is)
+    {
+    	is >> value_;
+    }
+private:
+    T& value_;
+};
+
+template<typename T>
+struct extractor<std::vector<T>> {
+    extractor(std::vector<T>& value) : value_(value) {}
+public:
+    void operator()(std::istream& is)
+    {
+        T tmp;
+        is >> tmp;
+        value_.push_back(tmp);
+    }
+private:
+    std::vector<T>& value_;
+};
+
+template<>
+struct extractor<bool> {
+    extractor(bool& value) : value_(value) {}
+public:
+    void operator()(std::istream& is)
+    {
+    	value_ = !value_;
+    }
+private:
+    bool& value_;
+};
+
+// ----------------------------------------------------------------------------
 class container
 {
 //public:
 //    container() {}
 public:
     template<typename T>
-    void add(char sname, const std::string& lname, const std::string& desc, T& option_value_ref, const std::string& meta="VALUE") 
+    void add(char sname, const std::string& lname, const std::string& desc, T& option_value_ref, const std::string& meta="")
     {
-        options.emplace_back(sname, lname, desc, [&option_value_ref](std::istream& is) { is >> option_value_ref; }, meta);
+        options.emplace_back(sname, lname, desc, extractor<T>(option_value_ref), meta);
     }
 public:
-    void add(char sname, const std::string& lname, const std::string& desc, bool& option_value_ref, const std::string& meta="")
-    {
-        options.emplace_back(sname, lname, desc, [&option_value_ref](std::istream& is) { option_value_ref = !option_value_ref; }, meta);
-    }
-public:
-    void parse(int argc, char *argv[]);    
+    void parse(int argc, char *argv[]);
 public:
     option& find_by_name(const std::string& name);
     option& find_by_name(char name);

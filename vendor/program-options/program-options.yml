@@ -1,0 +1,6 @@
+--- !library
+    name: program-options
+    sources:
+        - source/*.cpp
+    includes:
+        - include

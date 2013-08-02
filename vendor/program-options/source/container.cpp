@@ -14,6 +14,8 @@
 
 // ----------------------------------------------------------------------------
 #include <cstring>
+#include <iostream>
+#include <iterator>
 
 // ----------------------------------------------------------------------------
 namespace program_options
@@ -35,7 +37,7 @@ struct tokens: std::ctype<char>
         rc[' '] = std::ctype_base::print;
         return &rc[0];
     }
-};    
+};
 
 // ----------------------------------------------------------------------------
 const std::string container::option_end = " =\n";
@@ -79,14 +81,23 @@ void container::parse(int argc, char *argv[])
 
                     auto& option = find_by_name(name);
 
-                    if ( *iit == '\n' ) {
+                    if ( *iit == '\n' )
+                    {
                         iit++;
                         cont = false;
                     }
+
                     // Trigger possible underflow to make in_avail correct for argv_streambuf.
                     buf.sgetc();
 
                     extract_option_value(option, std::string(1, name), buf);
+
+                    if ( option.meta().length() > 0 )
+                    {
+                        *iit++;
+                        cont = false;
+                    }
+
                 }
                 while( cont && iit != eos );
             }
@@ -98,9 +109,11 @@ void container::parse(int argc, char *argv[])
         else
         {
             std::string arg;
+
             while (iit != eos && *iit != '\n') {
                 arg += *iit++;
             }
+
             arguments.emplace_back(arg);
         }
     }
@@ -136,7 +149,7 @@ void container::extract_option_value(option& option, const std::string& name, st
     std::istream is(&buf);
     is.imbue(std::locale(std::locale(), new tokens()));
 
-    // Save number of available characters.
+    // Save number of available characters so we can back track on error.
     std::size_t pos = buf.in_avail();
 
     option.extract(is);

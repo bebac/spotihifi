@@ -20,11 +20,11 @@ namespace program_options
 const char argv_streambuf::separator[]  = "\n";
 
 // ----------------------------------------------------------------------------
-argv_streambuf::argv_streambuf(int argc, char* argv[]) 
-    : 
-    std::streambuf(), 
-    argc(argc), 
-    argv(argv), 
+argv_streambuf::argv_streambuf(int argc, char* argv[])
+    :
+    std::streambuf(),
+    argc(argc),
+    argv(argv),
     argi(0)
 {
     setg(argv[0]);
@@ -58,7 +58,7 @@ void argv_streambuf::setg(char_type* buf)
 {
     assert(buf);
     std::streambuf::setg(buf, buf, buf+strlen(buf));
-}    
+}
 
 // ----------------------------------------------------------------------------
 std::streampos argv_streambuf::seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode which)
