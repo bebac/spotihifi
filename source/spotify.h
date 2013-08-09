@@ -113,6 +113,8 @@ private:
 private:
   void player_state_notify(std::string state, track_t* track = 0);
 private:
+  void set_playlist_callbacks(sp_playlist* pl);
+private:
   // session callbacks.
   static void logged_in_cb(sp_session *session, sp_error error);
   static void logged_out_cb(sp_session *session);

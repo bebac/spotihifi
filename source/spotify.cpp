@@ -328,6 +328,9 @@ void spotify_t::main()
             // Try to import or wait for tracks to load.
             if ( import_playlist(pl) )
             {
+              // Set additional playlist callbacks.
+              set_playlist_callbacks(pl);
+              // Remove it from the import queue.
               m_playlists_for_import.pop();
               LOG(INFO) << "m_tracks length=" << m_tracks.size();
             }
@@ -387,8 +390,8 @@ void spotify_t::logged_in_handler()
   m_playlists_for_import.push(pl);
 
   sp_playlist_callbacks playlist_callbacks = {
-    &playlist_tracks_added,
-    &playlist_tracks_removed,
+    0,
+    0,
     0,
     0,
     &playlist_state_changed_cb,
@@ -714,6 +717,28 @@ void spotify_t::player_state_notify(std::string state, track_t* track)
   }
 }
 
+// ----------------------------------------------------------------------------
+void spotify_t::set_playlist_callbacks(sp_playlist* pl)
+{
+  sp_playlist_callbacks playlist_callbacks = {
+    &playlist_tracks_added,
+    &playlist_tracks_removed,
+    0,
+    0,
+    &playlist_state_changed_cb,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  };
+
+  sp_playlist_add_callbacks(pl, &playlist_callbacks, this);
+}
+
 //
 // Spotify callbacks.
 //
@@ -967,8 +992,8 @@ void spotify_t::container_loaded_cb(sp_playlistcontainer *pc, void *userdata)
     self->m_playlists_for_import.push(pl);
 
     sp_playlist_callbacks callbacks = {
-      &playlist_tracks_added,
-      &playlist_tracks_removed,
+      0,
+      0,
       0,
       0,
       &playlist_state_changed_cb,
