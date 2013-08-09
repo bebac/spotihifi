@@ -20,7 +20,10 @@ static std::string sp_track_id(sp_track* track);
 static track_t make_track_from_sp_track(sp_track* const track);
 
 // ----------------------------------------------------------------------------
-spotify_t::spotify_t(std::string audio_device_name, std::string cache_dir)
+spotify_t::spotify_t(const std::string& audio_device_name,
+                     const std::string& cache_dir,
+                     const std::string& last_fm_username,
+                     const std::string& last_fm_password)
   :
   m_session(0),
   m_session_logged_in(false),
@@ -32,6 +35,8 @@ spotify_t::spotify_t(std::string audio_device_name, std::string cache_dir)
   m_audio_device_name(audio_device_name),
   m_audio_output(),
   m_cache_dir(cache_dir),
+  m_last_fm_username(last_fm_username),
+  m_last_fm_password(last_fm_password),
   /////
   // Tracks database.
   m_tracks(),
@@ -434,6 +439,13 @@ void spotify_t::logged_in_handler()
     };
 
     sp_playlistcontainer_add_callbacks(m_playlistcontainer, &container_callbacks, this);
+  }
+
+  if ( m_last_fm_username.length() > 0 )
+  {
+    LOG(INFO) << "scrobbling to last.fm";
+    sp_session_set_social_credentials(m_session, SP_SOCIAL_PROVIDER_LASTFM, m_last_fm_username.c_str(), m_last_fm_password.c_str());
+    sp_session_set_scrobbling(m_session, SP_SOCIAL_PROVIDER_LASTFM, SP_SCROBBLING_STATE_LOCAL_ENABLED);
   }
 }
 

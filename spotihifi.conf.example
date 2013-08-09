@@ -4,5 +4,8 @@
 
   "audio_device_name" : "default",
 
-  "cache_dir"         : "/tmp/spotihifi_cache"
+  "cache_dir"         : "/tmp/spotihifi_cache",
+
+  "last_fm_username"  : "...",
+  "last_fm_password"  : "..."
 }

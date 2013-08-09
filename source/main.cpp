@@ -43,7 +43,9 @@ public:
     password(),
     audio_device_name("default"),
     conf_filename("spotihifi.conf"),
-    cache_dir("spotihifi_cache")
+    cache_dir("spotihifi_cache"),
+    last_fm_username(),
+    last_fm_password()
   {
     add('h', "help", "display this message", help);
     add('a', "address", "local interface ip address to bind to", address, "IP");
@@ -62,6 +64,9 @@ public:
   std::string audio_device_name;
   std::string conf_filename;
   std::string cache_dir;
+  // Set from json configuration.
+  std::string last_fm_username;
+  std::string last_fm_password;
 };
 
 // ----------------------------------------------------------------------------
@@ -102,6 +107,12 @@ void parse_conf_file(const std::string& filename, options& options)
 
     if ( conf.has("cache_dir") ) {
       options.cache_dir = conf.get("cache_dir").get<json::string>().str();
+    }
+
+    if ( conf.has("last_fm_username") && conf.has("last_fm_password") )
+    {
+      options.last_fm_username = conf.get("last_fm_username").get<json::string>().str();
+      options.last_fm_password = conf.get("last_fm_password").get<json::string>().str();
     }
   }
   catch (const std::exception& e)
@@ -361,7 +372,7 @@ int main(int argc, char *argv[])
 
     parse_conf_file(options.conf_filename, options);
 
-    spotify_t spotify(options.audio_device_name, options.cache_dir);
+    spotify_t spotify(options.audio_device_name, options.cache_dir, options.last_fm_username, options.last_fm_password);
 
     spotify.login(options.username, options.password);
 

@@ -65,7 +65,10 @@ class spotify_t
 private:
   typedef std::unordered_map<std::string, track_t> trackmap_t;
 public:
-  spotify_t(std::string audio_device_name, std::string cache_dir);
+  spotify_t(const std::string& audio_device_name,
+            const std::string& cache_dir,
+            const std::string& last_fm_username = "",
+            const std::string& last_fm_password = "");
 public:
   ~spotify_t();
 public:
@@ -155,6 +158,8 @@ protected:
   std::string m_audio_device_name;
   std::shared_ptr<audio_output_t> m_audio_output;
   std::string m_cache_dir;
+  std::string m_last_fm_username;
+  std::string m_last_fm_password;
   /////
   // Tracks database.
   trackmap_t m_tracks;
