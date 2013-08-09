@@ -136,8 +136,8 @@ private:
   static void credentials_blob_updated_cb(sp_session *session, const char* blob);
   // playlist callbacks.
   static void playlist_state_changed_cb(sp_playlist* pl, void* userdata);
-  static void playlist_tracks_added(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata);
-  static void playlist_tracks_removed(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata);
+  static void playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata);
+  static void playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata);
   // playlist container callbacks.
   static void container_loaded_cb(sp_playlistcontainer *pc, void *userdata);
 protected:

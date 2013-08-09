@@ -721,8 +721,8 @@ void spotify_t::player_state_notify(std::string state, track_t* track)
 void spotify_t::set_playlist_callbacks(sp_playlist* pl)
 {
   sp_playlist_callbacks playlist_callbacks = {
-    &playlist_tracks_added,
-    &playlist_tracks_removed,
+    &playlist_tracks_added_cb,
+    &playlist_tracks_removed_cb,
     0,
     0,
     &playlist_state_changed_cb,
@@ -912,7 +912,7 @@ void spotify_t::playlist_state_changed_cb(sp_playlist* pl, void* userdata)
 }
 
 // ----------------------------------------------------------------------------
-void spotify_t::playlist_tracks_added(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata)
+void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata)
 {
   LOG(INFO) << "callback:  " << __FUNCTION__;
 
@@ -937,7 +937,7 @@ void spotify_t::playlist_tracks_added(sp_playlist *pl, sp_track *const *tracks, 
 }
 
 // ----------------------------------------------------------------------------
-void spotify_t::playlist_tracks_removed(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata)
+void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata)
 {
   LOG(INFO) << "callback:  " << __FUNCTION__;
 
