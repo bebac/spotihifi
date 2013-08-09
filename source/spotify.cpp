@@ -414,11 +414,20 @@ void spotify_t::logged_in_handler()
   // TODO: Add callbacks in both situations to monitor for new playlists etc.
   if ( sp_playlistcontainer_is_loaded(m_playlistcontainer) ) {
     container_loaded_cb(m_playlistcontainer, this);
+
+    sp_playlistcontainer_callbacks container_callbacks = {
+      &playlist_added_cb,
+      0,
+      0,
+      0,
+    };
+
+    sp_playlistcontainer_add_callbacks(m_playlistcontainer, &container_callbacks, this);
   }
   else
   {
     sp_playlistcontainer_callbacks container_callbacks = {
-      0,
+      &playlist_added_cb,
       0,
       0,
       &container_loaded_cb,
@@ -972,6 +981,20 @@ void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, i
       LOG(WARNING) << "index " << tracks[i] << " sp_track_ptr == 0";
     }
   }
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::playlist_added_cb(sp_playlistcontainer *pc, sp_playlist *playlist, int position, void *userdata)
+{
+  LOG(INFO) << "callback:  " << __FUNCTION__;
+
+  spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
+
+  self->m_command_queue.push([=]()
+    {
+      LOG(INFO) << "queuing playlist to be imported";
+      self->m_playlists_for_import.push(playlist);
+    });
 }
 
 // ----------------------------------------------------------------------------
