@@ -53,6 +53,13 @@ public:
 };
 
 // ----------------------------------------------------------------------------
+struct playlist_update_data
+{
+  sp_track* const sp_track_ptr;
+  std::string     playlist_name;
+};
+
+// ----------------------------------------------------------------------------
 class spotify_t
 {
 private:
@@ -98,6 +105,8 @@ private:
   void play_next_from_queue();
   void play_track(const std::string& uri);
   bool import_playlist(sp_playlist* pl);
+  void process_tracks_to_add();
+  void process_tracks_to_remove();
 private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
   std::shared_ptr<audio_output_t> get_audio_output();
@@ -125,6 +134,8 @@ private:
   static void credentials_blob_updated_cb(sp_session *session, const char* blob);
   // playlist callbacks.
   static void playlist_state_changed_cb(sp_playlist* pl, void* userdata);
+  static void playlist_tracks_added(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata);
+  static void playlist_tracks_removed(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata);
   // playlist container callbacks.
   static void container_loaded_cb(sp_playlistcontainer *pc, void *userdata);
 protected:
@@ -147,6 +158,10 @@ protected:
   bool m_tracks_initialized;
   long long m_tracks_incarnation;
   long long m_tracks_transaction;
+  /////
+  // Tracks to add/remove
+  std::queue<playlist_update_data> m_tracks_to_add;
+  std::queue<playlist_update_data> m_tracks_to_remove;
   /////
   bool m_continued_playback;
   std::vector<std::string> m_continued_playback_tracks;

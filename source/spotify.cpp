@@ -17,6 +17,7 @@
 
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
+static track_t make_track_from_sp_track(sp_track* const track);
 
 // ----------------------------------------------------------------------------
 spotify_t::spotify_t(std::string audio_device_name, std::string cache_dir)
@@ -315,22 +316,29 @@ void spotify_t::main()
     init();
     while ( m_running )
     {
-      auto cmd = m_command_queue.pop(std::chrono::milliseconds(250), [this]
+      auto cmd = m_command_queue.pop(std::chrono::milliseconds(500), [this]
       {
         //std::cout << "timeout" << std::endl;
+        // Check if there are any playlists to import.
         if ( m_session_logged_in && m_playlists_for_import.size() > 0 )
         {
           sp_playlist* pl = m_playlists_for_import.front();
           if ( sp_playlist_is_loaded(pl) )
           {
+            // Try to import or wait for tracks to load.
             if ( import_playlist(pl) )
             {
               m_playlists_for_import.pop();
-              //sp_playlist_release(pl);
               LOG(INFO) << "m_tracks length=" << m_tracks.size();
             }
           }
         }
+
+        // Check if there are tracke to be added and/or removed in the
+        // tracks to add/remove queues.
+        process_tracks_to_remove();
+        process_tracks_to_add();
+
         // TODO: Check somehow if playlist import is done.
         if ( m_session_logged_in &&
              m_track &&
@@ -379,8 +387,8 @@ void spotify_t::logged_in_handler()
   m_playlists_for_import.push(pl);
 
   sp_playlist_callbacks playlist_callbacks = {
-    0,
-    0,
+    &playlist_tracks_added,
+    &playlist_tracks_removed,
     0,
     0,
     &playlist_state_changed_cb,
@@ -420,6 +428,7 @@ void spotify_t::logged_in_handler()
 // ----------------------------------------------------------------------------
 void spotify_t::track_loaded_handler()
 {
+  LOG(INFO) << "spotify_t::" << __FUNCTION__;
   if ( !m_track_playing )
   {
     sp_artist* artist;
@@ -573,22 +582,7 @@ bool spotify_t::import_playlist(sp_playlist* pl)
   {
     sp_track* sp_t = sp_playlist_track(pl, i);
 
-    assert(sp_track_is_loaded(sp_t));
-
-    sp_artist* artist;
-    sp_album* album;
-
-    sp_artist_add_ref(artist = sp_track_artist(sp_t, 0));
-    sp_album_add_ref(album = sp_track_album(sp_t));
-
-    track_t track;
-
-    track.track_id(sp_track_id(sp_t));
-    track.title(sp_track_name(sp_t));
-    track.track_number(sp_track_index(sp_t));
-    track.duration(sp_track_duration(sp_t));
-    track.artist(sp_artist_name(artist));
-    track.album(sp_album_name(album));
+    auto track = make_track_from_sp_track(sp_t);
 
     sp_availability avail = sp_track_get_availability(m_session, sp_t);
     if ( avail == SP_TRACK_AVAILABILITY_AVAILABLE )
@@ -605,12 +599,77 @@ bool spotify_t::import_playlist(sp_playlist* pl)
     else {
       LOG(WARNING) << "track unavailable " << to_json(track);
     }
-
-    sp_artist_release(artist);
-    sp_album_release(album);
   }
 
   return true;
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::process_tracks_to_add()
+{
+  if ( m_tracks_to_add.size() > 0 )
+  {
+    auto data = m_tracks_to_add.front();
+
+    if ( sp_track_is_loaded(data.sp_track_ptr) )
+    {
+      auto track = make_track_from_sp_track(data.sp_track_ptr);
+
+      LOG(INFO) << "add track " << to_json(track) << " to playlist '" << data.playlist_name << "'";
+
+      auto it = m_tracks.find(track.track_id());
+      if ( it != end(m_tracks) ) {
+        track.playlists((*it).second.playlists());
+      }
+
+      track.playlists_add(data.playlist_name);
+
+      m_tracks[track.track_id()] = track;
+      m_tracks_to_add.pop();
+    }
+    else
+    {
+      LOG(INFO) << "add queue: track not loaded";
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::process_tracks_to_remove()
+{
+// TODO: Figure out how to implement remove - see playlist_track_removed
+//       callback.
+#if 0
+  if ( m_tracks_to_remove.size() > 0 )
+  {
+    auto data = m_tracks_to_remove.front();
+
+    if ( sp_track_is_loaded(data.sp_track_ptr) )
+    {
+      auto track = make_track_from_sp_track(data.sp_track_ptr);
+
+      LOG(INFO) << "remove track " << to_json(track) << " from playlist '" << data.playlist_name << "'";
+
+      auto it = m_tracks.find(track.track_id());
+      if ( it != end(m_tracks) )
+      {
+        auto entry = (*it).second;
+
+        entry.playlists_remove(data.playlist_name);
+
+        // Remove entry if it is no longer in any playlists.
+        if ( entry.playlists_size() == 0 ) {
+          m_tracks.erase(entry.track_id());
+        }
+      }
+      m_tracks_to_remove.pop();
+    }
+    else
+    {
+      LOG(INFO) << "remove queue: track not loaded";
+    }
+  }
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -828,6 +887,69 @@ void spotify_t::playlist_state_changed_cb(sp_playlist* pl, void* userdata)
 }
 
 // ----------------------------------------------------------------------------
+void spotify_t::playlist_tracks_added(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata)
+{
+  LOG(INFO) << "callback:  " << __FUNCTION__;
+
+  spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
+
+  for ( int i=0; i<num_tracks; ++i )
+  {
+    sp_track* const sp_track_ptr = tracks[i];
+
+    std::string pl_name = sp_playlist_name(pl);
+
+    if ( pl_name.length() == 0 ) {
+      pl_name = "Starred";
+    }
+
+    self->m_command_queue.push([=]()
+      {
+        LOG(INFO) << "queuing track to be added";
+        self->m_tracks_to_add.push(playlist_update_data{sp_track_ptr, pl_name});
+      });
+  }
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::playlist_tracks_removed(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata)
+{
+  LOG(INFO) << "callback:  " << __FUNCTION__;
+
+  //spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
+
+  for ( int i=0; i<num_tracks; ++i )
+  {
+    sp_track* const sp_track_ptr = sp_playlist_track(pl, tracks[i]);
+
+    if ( sp_track_ptr )
+    {
+#if 0
+//
+// Argh! The tracks are already removed from the playlist which means that there is
+// not way to map the index to a track pointer. I do not see how to implement remove
+// without keeping a one-to-one mapping for all playlists.
+//
+      std::string pl_name = sp_playlist_name(pl);
+
+      if ( pl_name.length() == 0 ) {
+        pl_name = "Starred";
+      }
+
+      self->m_command_queue.push([=]()
+        {
+          LOG(INFO) << "queuing track " << static_cast<void *>(sp_track_ptr) << " to be removed from " << pl_name;
+          self->m_tracks_to_remove.push(playlist_update_data{sp_track_ptr, pl_name});
+        });
+#endif
+    }
+    else {
+      LOG(WARNING) << "index " << tracks[i] << " sp_track_ptr == 0";
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
 void spotify_t::container_loaded_cb(sp_playlistcontainer *pc, void *userdata)
 {
   LOG(INFO) << "callback:  " << __FUNCTION__;
@@ -845,8 +967,8 @@ void spotify_t::container_loaded_cb(sp_playlistcontainer *pc, void *userdata)
     self->m_playlists_for_import.push(pl);
 
     sp_playlist_callbacks callbacks = {
-      0,
-      0,
+      &playlist_tracks_added,
+      &playlist_tracks_removed,
       0,
       0,
       &playlist_state_changed_cb,
@@ -883,4 +1005,30 @@ static std::string sp_track_id(sp_track* track)
   result = result.substr(result.rfind(':')+1);
 
   return std::move(result);
+}
+
+// ----------------------------------------------------------------------------
+static track_t make_track_from_sp_track(sp_track* const sp_track_ptr)
+{
+  assert(sp_track_is_loaded(sp_track_ptr));
+
+  sp_artist* artist;
+  sp_album* album;
+
+  sp_artist_add_ref(artist = sp_track_artist(sp_track_ptr, 0));
+  sp_album_add_ref(album = sp_track_album(sp_track_ptr));
+
+  track_t track;
+
+  track.track_id(sp_track_id(sp_track_ptr));
+  track.title(sp_track_name(sp_track_ptr));
+  track.track_number(sp_track_index(sp_track_ptr));
+  track.duration(sp_track_duration(sp_track_ptr));
+  track.artist(sp_artist_name(artist));
+  track.album(sp_album_name(album));
+
+  sp_artist_release(artist);
+  sp_album_release(album);
+
+  return std::move(track);
 }
