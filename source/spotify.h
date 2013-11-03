@@ -107,7 +107,7 @@ private:
   void process_events_handler();
   void play_next_from_queue();
   void play_track(const std::string& uri);
-  bool import_playlist(sp_playlist* pl);
+  void import_playlist(sp_playlist* pl);
   void process_tracks_to_add();
   void process_tracks_to_remove();
 private:
@@ -153,7 +153,6 @@ protected:
   std::deque<std::string> m_play_queue;
   sp_track* m_track;
   sp_playlistcontainer* m_playlistcontainer;
-  std::queue<sp_playlist*> m_playlists_for_import;
   std::atomic<bool> m_track_playing;
   std::string m_audio_device_name;
   std::shared_ptr<audio_output_t> m_audio_output;
