@@ -203,16 +203,16 @@ std::future<json::object> spotify_t::get_tracks(long long incarnation, long long
   auto promise = std::make_shared<std::promise<json::object>>();
   m_command_queue.push([=]()
   {
-    json::object result;
-
     LOG(INFO) << "get_tracks"
               << " m_tracks_incarnation=" << m_tracks_incarnation
               << ", incarnation=" << incarnation
               << ", m_tracks_transaction=" << m_tracks_transaction
               << ", transaction=" << transaction;
 
-    result.set("incarnation", std::to_string(m_tracks_incarnation));
-    result.set("transaction", std::to_string(m_tracks_transaction));
+    json::object result{
+      { "incarnation", std::to_string(m_tracks_incarnation) },
+      { "transaction", std::to_string(m_tracks_transaction) }
+    };
 
     if ( incarnation != m_tracks_incarnation )
     {
@@ -221,7 +221,7 @@ std::future<json::object> spotify_t::get_tracks(long long incarnation, long long
       for ( auto& t : m_tracks ) {
         tracks.push_back(to_json(t.second));
       }
-      result.set("tracks", tracks);
+      result["tracks"] = tracks;
     }
     else
     {
@@ -699,12 +699,10 @@ void spotify_t::player_state_notify(std::string state, track_t* track)
   {
     if ( observer.get() )
     {
-      json::object event;
-
-      event.set("state", state);
+      json::object event{ { "state", state } };
 
       if ( track ) {
-        event.set("track", to_json(*track).get<json::object>());
+        event["track"] = to_json(*track);
       }
 
       observer->player_state_event(std::move(event));

@@ -18,7 +18,8 @@ end
 ENV["CPPFLAGS"] = %q(-std=c++11)
 
 # -----------------------------------------------------------------------------
-program_options = Rake::StaticLibraryTask.new("vendor/program-options/program-options.yml")
+popt = Rake::StaticLibraryTask.new("vendor/program-options/program-options.yml")
+json = Rake::StaticLibraryTask.new("vendor/json/json.yml")
 
 # -----------------------------------------------------------------------------
 spec = Rake::ExecutableSpecification.new do |s|
@@ -26,6 +27,7 @@ spec = Rake::ExecutableSpecification.new do |s|
     s.includes.add %w(
         source
         vendor/program-options/include
+        vendor/json/include
         vendor/libspotify-12.1.51-Linux-x86_64-release/include
     )
     s.libincludes.add %w(
@@ -36,7 +38,7 @@ spec = Rake::ExecutableSpecification.new do |s|
         source/**/*.cpp
         source/appkey.c
     )
-    s.libraries += [ program_options ] + %w(asound spotify)
+    s.libraries += [ popt, json ] + %w(asound spotify)
 end
 
 # -----------------------------------------------------------------------------

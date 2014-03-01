@@ -12,7 +12,7 @@
 #define __jsonrpc_h__
 
 // ----------------------------------------------------------------------------
-#include <json.h>
+#include <json/json.h>
 
 // ----------------------------------------------------------------------------
 #include <string>
@@ -36,43 +36,35 @@ public:
 public:
   json::object error()
   {
-    json::object e;
-
-    e.set("code", m_error_code);
-    e.set("message", "Invalid Request");
-
-    return std::move(e);
+    return std::move(json::object{ { "code", m_error_code }, { "messge", "Invalid Request" } });
   }
 public:
-  static jsonrpc_request from_json(const json::value& v)
+  static jsonrpc_request from_json(json::value& v)
   {
     jsonrpc_request self;
 
     if ( v.is_object() )
     {
-      auto o = v.get<json::object>();
+      auto& o = v.as_object();
 
-      if ( !o.has("jsonrpc") ) {
+      if ( !o["jsonrpc"].is_string() ) {
         self.m_error_code = -32600;
       }
 
-      if ( !o.has("method") ) {
+      if ( !o["method"].is_string() ) {
         self.m_error_code = -32600;
       }
 
-      if ( !o.has("params") ) {
+      if ( o["params"].is_null() ) {
         self.m_error_code = -32600;
       }
 
       if ( self.is_valid() )
       {
-        self.m_version = o.get("jsonrpc").get<json::string>().str();
-        self.m_method = o.get("method").get<json::string>().str();
-        self.m_params = o.get("params");
-
-        if ( o.has("id") ) {
-            self.m_id = o.get("id");
-        }
+        self.m_version = o["jsonrpc"].as_string();
+        self.m_method = o["method"].as_string();
+        self.m_params = o["params"];
+        self.m_id = o["id"];
       }
     }
     else

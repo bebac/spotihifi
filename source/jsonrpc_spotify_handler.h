@@ -12,7 +12,8 @@
 #define __jsonrpc_spotify_handler_h__
 
 // ----------------------------------------------------------------------------
-#include <json.h>
+#include <json/json.h>
+#include <jsonrpc.h>
 #include <spotify.h>
 #include <log.h>
 
@@ -64,36 +65,36 @@ public:
     if ( method == "sync" )
     {
       // TODO: Error handling.
-      json::object o = params.get<json::object>();
+      json::object o = params.as_object();
 
       long long incarnation = -1;
       long long transaction = -1;
 
-      if ( o.has("incarnation") ) {
-        incarnation = std::stol(o.get("incarnation").get<json::string>().str());
+      if ( o["incarnation"].is_string() ) {
+        incarnation = std::stol(o["incarnation"].as_string());
       }
 
-      if ( o.has("transaction") ) {
-        transaction = std::stol(o.get("transaction").get<json::string>().str());
+      if ( o["transaction"].is_string() ) {
+        transaction = std::stol(o["transaction"].as_string());
       }
 
       auto v = spotify.get_tracks(incarnation, transaction).get();
 
       LOG(INFO) << "sync result"
-                << " incarnation=" << v.get("incarnation").get<json::string>()
-                << ", transaction=" << v.get("transaction").get<json::string>();
+                << " incarnation=" << v["incarnation"].as_string()
+                << ", transaction=" << v["transaction"].as_string();
 
-      response.set("result", v);
+      response["result"] = v;
     }
     else if ( method == "play" )
     {
       if ( params.is_object() )
       {
-        json::object o = params.get<json::object>();
+        json::object o = params.as_object();
 
-        if ( o.has("playlist") )
+        if ( o["playlist"].is_string() )
         {
-          auto pl = o.get("playlist").get<json::string>().str();
+          auto pl = o["playlist"].as_string();
           if ( pl.length() == 0 )
           {
             spotify.player_stop();
@@ -107,42 +108,36 @@ public:
         }
       }
       spotify.player_play();
-      response.set("result", "ok");
+      response["result"] = "ok";
     }
     else if ( method == "pause" )
     {
       spotify.player_pause();
-      response.set("result", "ok");
+      response["result"] = "ok";
     }
     else if ( method == "skip" )
     {
       spotify.player_skip();
-      response.set("result", "ok");
+      response["result"] = "ok";
     }
     else if ( method == "stop" )
     {
       spotify.player_stop();
-      response.set("result", "ok");
+      response["result"] = "ok";
     }
     else if ( method == "queue" )
     {
-      json::array p = params.get<json::array>();
-      auto v = p.at(0).get<json::string>().str();
+      json::array p = params.as_array();
+      auto v = p[0].as_string();
 
       spotify.player_play(v);
 
-      response.set("result", "ok");
+      response["result"] = "ok";
     }
     else
     {
-      json::object e;
-
-      e.set("code", -32601);
-      e.set("message", "Method not found");
-
+      response["error"] = json::object{ { "code", -32601 }, { "message", "Method not found" } };
       LOG(ERROR) << response;
-
-      response.set("error", e);
     }
   }
 public:
@@ -159,11 +154,11 @@ public:
     LOG(INFO) << __FUNCTION__ << " " << event;
     if ( notify_sender )
     {
-      json::object notify;
-
-      notify.set("jsonrpc", "2.0");
-      notify.set("method", "pb-event");
-      notify.set("params", std::move(event));
+      json::object notify{
+        { "jsonrpc", "2.0" },
+        { "method", "pb-event" },
+        { "params", std::move(event) }
+      };
 
       notify_sender->send_notify(std::move(notify));
     }

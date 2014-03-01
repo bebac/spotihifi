@@ -1,0 +1,6 @@
+--- !library
+    name: json
+    sources:
+        - source/**/*.cpp
+    includes:
+        - include

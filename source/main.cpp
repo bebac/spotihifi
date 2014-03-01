@@ -12,8 +12,7 @@
 #include <cmdque.h>
 #include <socket.h>
 #include <inet_socket_address.h>
-#include <json.h>
-#include <jsonrpc.h>
+#include <json/json.h>
 #include <jsonrpc_spotify_handler.h>
 #include <spotify.h>
 #include <log.h>
@@ -91,28 +90,28 @@ void parse_conf_file(const std::string& filename, options& options)
       throw std::runtime_error("configuration file must be a json object!");
     }
 
-    json::object conf = doc.get<json::object>();
+    json::object conf = doc.as_object();
 
-    if ( options.username.length() == 0 && conf.has("spotify_username") ) {
-      options.username = conf.get("spotify_username").get<json::string>().str();
+    if ( options.username.length() == 0 && conf["spotify_username"].is_string() ) {
+      options.username = conf["spotify_username"].as_string();
     }
 
-    if ( options.password.length() == 0 && conf.has("spotify_password") ) {
-      options.password = conf.get("spotify_password").get<json::string>().str();
+    if ( options.password.length() == 0 && conf["spotify_password"].is_string() ) {
+      options.password = conf["spotify_password"].as_string();
     }
 
-    if ( options.audio_device_name == "default" && conf.has("audio_device_name") ) {
-      options.audio_device_name = conf.get("audio_device_name").get<json::string>().str();
+    if ( options.audio_device_name == "default" && conf["audio_device_name"].is_string() ) {
+      options.audio_device_name = conf["audio_device_name"].as_string();
     }
 
-    if ( conf.has("cache_dir") ) {
-      options.cache_dir = conf.get("cache_dir").get<json::string>().str();
+    if ( conf["cache_dir"].is_string() ) {
+      options.cache_dir = conf["cache_dir"].as_string();
     }
 
-    if ( conf.has("last_fm_username") && conf.has("last_fm_password") )
+    if ( conf["last_fm_username"].is_string() && conf["last_fm_password"].is_string() )
     {
-      options.last_fm_username = conf.get("last_fm_username").get<json::string>().str();
-      options.last_fm_password = conf.get("last_fm_password").get<json::string>().str();
+      options.last_fm_username = conf["last_fm_username"].as_string();
+      options.last_fm_password = conf["last_fm_password"].as_string();
     }
   }
   catch (const std::exception& e)
@@ -161,7 +160,12 @@ public:
   {
     m_cmdq.push([=]()
     {
-      std::string body = to_string(message);
+      std::stringstream os;
+
+      os << message;
+
+      std::string body = os.str();
+
       std::vector<char> buf(4);
 
       size_t len = body.length();
@@ -271,8 +275,6 @@ private:
 
     receive(bbuf.data(), hlen);
 
-    //std::cout << "body: '" << std::string(begin(bbuf), end(bbuf)) << "'" << std::endl;
-
     json::value  doc;
     json::parser parser(doc);
 
@@ -285,16 +287,11 @@ private:
 
     if ( request.is_valid() )
     {
-      json::object response;
+      json::object response{ { "jsonrpc", "2.0" }, { "id", request.id() } };
 
       LOG(DEBUG) << "received request " << doc;
 
-      response.set("jsonrpc", "2.0");
-      response.set("id", request.id());
-
       m_handler->call_method(request.method(), request.params(), response);
-
-      LOG(DEBUG) << "sending response length=" << to_string(response).length();
 
       send(std::move(response));
     }
@@ -302,11 +299,11 @@ private:
     {
       LOG(INFO) << "invalid jsonrpc request: " << request.error();
 
-      json::object response;
-
-      response.set("jsonrpc", "2.0");
-      response.set("error", request.error());
-      response.set("id", request.id());
+      json::object response{
+        { "jsonrpc", "2.0" },
+        { "error", request.error() },
+        { "id", request.id() }
+      };
 
       send(std::move(response));
     }
@@ -358,7 +355,7 @@ int main(int argc, char *argv[])
 
     if ( options.help )
     {
-      std::cout << "Usage: spotihifid [OPTION...]" << std::endl
+      std::cout << "Usage: spotihifid v0.1.3 [OPTION...]" << std::endl
                 << std::endl
                 << "spotihifi daemon" << std::endl
                 << std::endl

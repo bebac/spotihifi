@@ -12,7 +12,7 @@
 #define __track_h__
 
 // ----------------------------------------------------------------------------
-#include <json.h>
+#include <json/json.h>
 
 // ----------------------------------------------------------------------------
 #include <string>
@@ -59,21 +59,21 @@ private:
 // ----------------------------------------------------------------------------
 static inline json::value to_json(const track_t& track)
 {
-  json::object o;
-
-  o.set("track_id", track.track_id());
-  o.set("title", track.title());
-  o.set("track_number", track.track_number());
-  o.set("duration", track.duration());
-  o.set("artist", track.artist());
-  o.set("album", track.album());
+  json::object o {
+    { "track_id", track.track_id() },
+    { "title", track.title() },
+    { "track_number", track.track_number() },
+    { "duration", track.duration() },
+    { "artist", track.artist() },
+    { "album", track.album() }
+  };
 
   json::array playlists;
   for ( const auto& pl : track.playlists() ) {
     playlists.push_back(pl);
   }
 
-  o.set("playlists", playlists);
+  o["playlists"] = playlists;
 
   return std::move(o);
 }
