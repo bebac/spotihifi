@@ -23,6 +23,7 @@
 #include <cassert>
 #include <deque>
 #include <unordered_map>
+#include <vector>
 #include <future>
 #include <atomic>
 
@@ -53,17 +54,29 @@ public:
 };
 
 // ----------------------------------------------------------------------------
-struct playlist_update_data
+struct playlist_add_data
 {
-  sp_track* const sp_track_ptr;
-  std::string     playlist_name;
+  //sp_track* const sp_track_ptr;
+  std::string                           playlist_name;
+  std::vector<std::shared_ptr<track_t>> tracks;
+  size_t                                position;
+};
+
+// ----------------------------------------------------------------------------
+struct playlist_remove_data
+{
+  std::string         playlist_name;
+  std::vector<size_t> positions;
 };
 
 // ----------------------------------------------------------------------------
 class spotify_t
 {
 private:
-  typedef std::unordered_map<std::string, track_t> trackmap_t;
+  typedef std::shared_ptr<track_t>                    track_ptr;
+  typedef std::unordered_map<std::string, track_ptr>  track_map_t;
+  typedef std::vector<track_ptr>                      playlist_t;
+  typedef std::unordered_map<std::string, playlist_t> playlist_map_t;
 public:
   spotify_t(const std::string& audio_device_name,
             const std::string& cache_dir,
@@ -114,7 +127,7 @@ private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
   std::shared_ptr<audio_output_t> get_audio_output();
 private:
-  void player_state_notify(std::string state, track_t* track = 0);
+  void player_state_notify(std::string state, std::shared_ptr<track_t> track = nullptr);
 private:
   void set_playlist_callbacks(sp_playlist* pl);
 private:
@@ -161,14 +174,15 @@ protected:
   std::string m_last_fm_password;
   /////
   // Tracks database.
-  trackmap_t m_tracks;
-  bool m_tracks_initialized;
-  long long m_tracks_incarnation;
-  long long m_tracks_transaction;
+  track_map_t    m_tracks;
+  playlist_map_t m_playlists;
+  bool           m_tracks_initialized;
+  long long      m_tracks_incarnation;
+  long long      m_tracks_transaction;
   /////
   // Tracks to add/remove
-  std::queue<playlist_update_data> m_tracks_to_add;
-  std::queue<playlist_update_data> m_tracks_to_remove;
+  std::queue<playlist_add_data> m_tracks_to_add;
+  std::queue<playlist_remove_data> m_tracks_to_remove;
   /////
   bool m_continued_playback;
   std::vector<std::string> m_continued_playback_tracks;
