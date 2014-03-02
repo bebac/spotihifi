@@ -347,11 +347,15 @@ int main(int argc, char *argv[])
   options options;
 
   if ( signal(SIGPIPE, sig_handler) == SIG_ERR ) {
-    std::cerr << "Error installing signal handler!" << std::endl;
+    std::cerr << "Error installing SIGPIPE handler!" << std::endl;
   }
 
   if ( signal(SIGINT, sig_handler) == SIG_ERR ) {
-    std::cerr << "Error installing signal handler!" << std::endl;
+    std::cerr << "Error installing SIGINT handler!" << std::endl;
+  }
+
+  if ( signal(SIGTERM, sig_handler) == SIG_ERR ) {
+    std::cerr << "Error installing SIGTERM handler!" << std::endl;
   }
 
   try
