@@ -23,7 +23,8 @@ static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
 spotify_t::spotify_t(const std::string& audio_device_name,
                      const std::string& cache_dir,
                      const std::string& last_fm_username,
-                     const std::string& last_fm_password)
+                     const std::string& last_fm_password,
+                     const std::string& track_stat_filename)
   :
   m_session(0),
   m_session_logged_in(false),
@@ -43,6 +44,7 @@ spotify_t::spotify_t(const std::string& audio_device_name,
   m_tracks_initialized(false), // Not used yet.
   m_tracks_incarnation(reinterpret_cast<long long>(this)),
   m_tracks_transaction(0), // Always zero for now.
+  m_track_stat_filename(track_stat_filename),
   /////
   m_continued_playback(true),
   m_thr{&spotify_t::main, this}
@@ -71,6 +73,11 @@ void spotify_t::stop()
       player_state_notify("stopped");
       sp_session_player_unload(m_session);
       m_track_playing = false;
+    }
+
+    if ( m_track_stat_filename.length() > 0 )
+    {
+      save_track_stats(m_track_stats, m_track_stat_filename);
     }
 
     this->m_running = false;
@@ -138,6 +145,18 @@ void spotify_t::player_skip()
     }
     if ( m_track )
     {
+      auto track_id = sp_track_id(m_track);
+
+      auto it = m_track_stats.find(track_id);
+      if ( it == end(m_track_stats) )
+      {
+        m_track_stats[track_id] = track_stat_t{track_id};
+      }
+
+      m_track_stats[track_id].increase_skip_count();
+
+      LOG(INFO) << "track stat update " << to_json(m_track_stats[track_id]);
+
       sp_track_release(m_track);
       m_track = 0;
     }
@@ -315,6 +334,11 @@ void spotify_t::init()
   if ( SP_ERROR_OK != error ) {
     throw spotify_error(error);
   }
+
+  if ( m_track_stat_filename.length() > 0 )
+  {
+    load_track_stats(m_track_stats, m_track_stat_filename);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -469,6 +493,18 @@ void spotify_t::end_of_track_handler()
   assert(m_session);
   assert(m_track);
   assert(m_track_playing);
+
+  auto track_id = sp_track_id(m_track);
+
+  auto it = m_track_stats.find(track_id);
+  if ( it == end(m_track_stats) )
+  {
+    m_track_stats[track_id] = track_stat_t{track_id};
+  }
+
+  m_track_stats[track_id].increase_play_count();
+
+  LOG(INFO) << "track stat update " << to_json(m_track_stats[track_id]);
 
   // Release current track.
   sp_session_player_unload(m_session);

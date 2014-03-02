@@ -15,6 +15,7 @@
 #include <cmdque.h>
 #include <audio_output_alsa.h>
 #include <track.h>
+#include <track_stat.h>
 
 // ----------------------------------------------------------------------------
 #include <iostream>
@@ -80,8 +81,9 @@ private:
 public:
   spotify_t(const std::string& audio_device_name,
             const std::string& cache_dir,
-            const std::string& last_fm_username = "",
-            const std::string& last_fm_password = "");
+            const std::string& last_fm_username,
+            const std::string& last_fm_password,
+            const std::string& track_stat_filename);
 public:
   ~spotify_t();
 public:
@@ -174,11 +176,13 @@ protected:
   std::string m_last_fm_password;
   /////
   // Tracks database.
-  track_map_t    m_tracks;
-  playlist_map_t m_playlists;
-  bool           m_tracks_initialized;
-  long long      m_tracks_incarnation;
-  long long      m_tracks_transaction;
+  track_map_t      m_tracks;
+  playlist_map_t   m_playlists;
+  bool             m_tracks_initialized;
+  long long        m_tracks_incarnation;
+  long long        m_tracks_transaction;
+  std::string      m_track_stat_filename;
+  track_stat_map_t m_track_stats;
   /////
   // Tracks to add/remove
   std::queue<playlist_add_data> m_tracks_to_add;

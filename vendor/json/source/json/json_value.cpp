@@ -122,6 +122,12 @@ namespace json
   {
   }
 
+  value::value(unsigned v)
+    :
+    type_(type::num), num_(v)
+  {
+  }
+
   value::value(bool v)
     :
     type_(v ? type::tru : type::fal), t_f_(v)

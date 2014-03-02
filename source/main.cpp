@@ -66,6 +66,7 @@ public:
   // Set from json configuration.
   std::string last_fm_username;
   std::string last_fm_password;
+  std::string track_stat_filename;
 };
 
 // ----------------------------------------------------------------------------
@@ -112,6 +113,10 @@ void parse_conf_file(const std::string& filename, options& options)
     {
       options.last_fm_username = conf["last_fm_username"].as_string();
       options.last_fm_password = conf["last_fm_password"].as_string();
+    }
+
+    if ( conf["track_stat_filename"].is_string() ) {
+      options.track_stat_filename = conf["track_stat_filename"].as_string();
     }
   }
   catch (const std::exception& e)
@@ -369,7 +374,7 @@ int main(int argc, char *argv[])
 
     parse_conf_file(options.conf_filename, options);
 
-    spotify_t spotify(options.audio_device_name, options.cache_dir, options.last_fm_username, options.last_fm_password);
+    spotify_t spotify(options.audio_device_name, options.cache_dir, options.last_fm_username, options.last_fm_password, options.track_stat_filename);
 
     spotify.login(options.username, options.password);
 

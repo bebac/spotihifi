@@ -40,6 +40,7 @@ namespace json
     value(std::string&& v);
     value(double v);
     value(int v);
+    value(unsigned v);
     value(bool v);
     value(const json::array& v);
     value(json::array&& v);
