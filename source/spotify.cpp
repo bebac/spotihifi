@@ -668,9 +668,29 @@ void spotify_t::process_tracks_to_add()
 
     for ( auto& track : data.tracks )
     {
-      auto it = m_tracks.find(track->track_id());
-      if ( it != end(m_tracks) ) {
-        track->playlists((*it).second->playlists());
+      if ( ! sp_track_is_loaded(track) ) {
+        LOG(INFO) << "process_tracks_to_add wait for tracks to load";
+        return;
+      }
+    }
+
+    // Create a list of tracks to be inserted into playlist.
+    std::vector<track_ptr> new_tracks;
+
+    for ( auto& sp_track_ptr : data.tracks )
+    {
+      track_ptr track;
+
+      auto track_id = sp_track_id(sp_track_ptr);
+
+      auto it = m_tracks.find(track_id);
+      if ( it != end(m_tracks) )
+      {
+        track = (*it).second;
+      }
+      else
+      {
+        track = make_track_from_sp_track(sp_track_ptr);
       }
 
       track->playlists_add(data.playlist_name);
@@ -678,9 +698,12 @@ void spotify_t::process_tracks_to_add()
       LOG(INFO) << "added track " << to_json(*track) << " to playlist '" << data.playlist_name << "'";
 
       m_tracks[track->track_id()] = track;
+
+      // Add track to list of track to be inserted into playlist.
+      new_tracks.push_back(track);
     }
 
-    pl.insert(pl.begin()+data.position, data.tracks.begin(), data.tracks.end());
+    pl.insert(pl.begin()+data.position, new_tracks.begin(), new_tracks.end());
 
     m_tracks_to_add.pop();
 
@@ -982,11 +1005,11 @@ void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *track
     pl_name = "Starred";
   }
 
-  playlist_add_data data{pl_name, std::vector<std::shared_ptr<track_t>>{size_t(num_tracks)}, size_t(position)};
+  playlist_add_data data{pl_name, std::vector<sp_track *>{size_t(num_tracks)}, size_t(position)};
 
   for ( int i=0; i<num_tracks; ++i )
   {
-    data.tracks[i] = make_track_from_sp_track(tracks[i]);
+    data.tracks[i] = tracks[i];
   }
 
   self->m_command_queue.push([=]()

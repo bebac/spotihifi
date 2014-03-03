@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
 
     if ( options.help )
     {
-      std::cout << "Usage: spotihifid v0.1.3 [OPTION...]" << std::endl
+      std::cout << "Usage: spotihifid v0.1.4 [OPTION...]" << std::endl
                 << std::endl
                 << "spotihifi daemon" << std::endl
                 << std::endl

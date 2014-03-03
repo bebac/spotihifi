@@ -59,7 +59,7 @@ struct playlist_add_data
 {
   //sp_track* const sp_track_ptr;
   std::string                           playlist_name;
-  std::vector<std::shared_ptr<track_t>> tracks;
+  std::vector<sp_track *>               tracks;
   size_t                                position;
 };
 
