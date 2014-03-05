@@ -118,6 +118,7 @@ private:
 private:
   void logged_in_handler();
   void track_loaded_handler();
+  void start_playback_handler();
   void end_of_track_handler();
   void process_events_handler();
   void play_next_from_queue();

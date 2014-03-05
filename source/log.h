@@ -86,7 +86,7 @@ inline std::ostringstream& logger::get(level_t level)
 // ----------------------------------------------------------------------------
 inline logger::level_t& logger::level()
 {
-  static logger::level_t logger_level = DEBUG;
+  static logger::level_t logger_level = INFO;
   return logger_level;
 }
 

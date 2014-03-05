@@ -351,8 +351,6 @@ void spotify_t::main()
     {
       auto cmd = m_command_queue.pop(std::chrono::milliseconds(500), [this]
       {
-        //std::cout << "timeout" << std::endl;
-
         // Check if there are tracke to be added and/or removed in the
         // tracks to add/remove queues.
         process_tracks_to_remove();
@@ -451,12 +449,6 @@ void spotify_t::track_loaded_handler()
   LOG(INFO) << "spotify_t::" << __FUNCTION__;
   if ( !m_track_playing )
   {
-    sp_artist* artist;
-    sp_album* album;
-
-    sp_artist_add_ref(artist = sp_track_artist(m_track, 0));
-    sp_album_add_ref(album = sp_track_album(m_track));
-
     sp_error err;
 
     if ( (err=sp_session_player_load(m_session, m_track)) != SP_ERROR_OK ) {
@@ -467,8 +459,16 @@ void spotify_t::track_loaded_handler()
       LOG(ERROR) << "sp_session_player_play error " << err;
     }
 
-    LOG(INFO) << "Start playing " << sp_track_name(m_track) << " - " << sp_artist_name(artist) << " - " << sp_album_name(album);
+    // Not sure why, but have to set it here to get start playback callback.
+    m_track_playing = true;
+  }
+}
 
+// ----------------------------------------------------------------------------
+void spotify_t::start_playback_handler()
+{
+  if ( m_track )
+  {
     auto it = m_tracks.find(sp_track_id(m_track));
 
     if ( it != end(m_tracks) ) {
@@ -479,9 +479,10 @@ void spotify_t::track_loaded_handler()
     }
 
     m_track_playing = true;
-
-    sp_artist_release(artist);
-    sp_album_release(album);
+  }
+  else
+  {
+    LOG(ERROR) << "m_track is null on start playback";
   }
 }
 
@@ -907,7 +908,16 @@ void spotify_t::play_token_lost_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::log_message_cb(sp_session *session, const char* data)
 {
-  LOG(INFO) << "spotify : " << data;
+  std::string msg(data);
+
+  if ( msg.find(" I [") == std::string::npos )
+  {
+    LOG(INFO) << "spotify : " << msg;
+  }
+  else
+  {
+    LOG(DEBUG) << "spotify : " << msg;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -934,6 +944,10 @@ void spotify_t::user_info_updated_cb(sp_session *session)
 void spotify_t::start_playback_cb(sp_session *session)
 {
   LOG(INFO) << "callback:  " << __FUNCTION__;
+
+  spotify_t* self = reinterpret_cast<spotify_t*>(sp_session_userdata(session));
+
+  self->m_command_queue.push(std::bind(&spotify_t::start_playback_handler, self));
 }
 
 // ----------------------------------------------------------------------------
@@ -1044,38 +1058,6 @@ void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, i
     LOG(INFO) << "queuing tracks to be removed";
     self->m_tracks_to_remove.push(data);
   });
-
-#if 0
-  for ( int i=0; i<num_tracks; ++i )
-  {
-    sp_track* const sp_track_ptr = sp_playlist_track(pl, tracks[i]);
-
-    if ( sp_track_ptr )
-    {
-#if 0
-//
-// Argh! The tracks are already removed from the playlist which means that there is
-// not way to map the index to a track pointer. I do not see how to implement remove
-// without keeping a one-to-one mapping for all playlists.
-//
-      std::string pl_name = sp_playlist_name(pl);
-
-      if ( pl_name.length() == 0 ) {
-        pl_name = "Starred";
-      }
-
-      self->m_command_queue.push([=]()
-        {
-          LOG(INFO) << "queuing track " << static_cast<void *>(sp_track_ptr) << " to be removed from " << pl_name;
-          self->m_tracks_to_remove.push(playlist_update_data{sp_track_ptr, pl_name});
-        });
-#endif
-    }
-    else {
-      LOG(WARNING) << "index " << tracks[i] << " sp_track_ptr == 0";
-    }
-  }
-#endif
 }
 
 // ----------------------------------------------------------------------------
