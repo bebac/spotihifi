@@ -57,7 +57,6 @@ public:
 // ----------------------------------------------------------------------------
 struct playlist_add_data
 {
-  //sp_track* const sp_track_ptr;
   std::string                           playlist_name;
   std::vector<sp_track *>               tracks;
   size_t                                position;
@@ -126,6 +125,7 @@ private:
   void import_playlist(sp_playlist* pl);
   void process_tracks_to_add();
   void process_tracks_to_remove();
+  void fill_continued_playback_tracks();
 private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
   std::shared_ptr<audio_output_t> get_audio_output();

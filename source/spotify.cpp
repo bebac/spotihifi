@@ -189,14 +189,7 @@ void spotify_t::build_track_set_all()
 {
   m_command_queue.push([=]()
   {
-    LOG(INFO) << "build_track_set_all";
-    m_continued_playback_tracks.clear();
-    for ( auto& t : m_tracks )
-    {
-      auto id = t.second->track_id();
-      m_continued_playback_tracks.push_back(id);
-    }
-    srand(time(0));
+    fill_continued_playback_tracks();
   });
 }
 
@@ -362,14 +355,7 @@ void spotify_t::main()
              m_continued_playback &&
              m_continued_playback_tracks.size() == 0 )
         {
-          LOG(INFO) << "building continued playback track set";
-
-          for ( auto& t : m_tracks )
-          {
-            auto id = t.second->track_id();
-            m_continued_playback_tracks.push_back(id);
-          }
-          srand(time(0));
+          fill_continued_playback_tracks();
         }
       });
       cmd();
@@ -751,6 +737,19 @@ void spotify_t::process_tracks_to_remove()
     //  LOG(INFO) << to_json(*track);
     //}
   }
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::fill_continued_playback_tracks()
+{
+  LOG(INFO) << "build continued playback track set";
+  m_continued_playback_tracks.clear();
+  for ( auto& t : m_tracks )
+  {
+    auto id = t.second->track_id();
+    m_continued_playback_tracks.push_back(id);
+  }
+  srand(time(0));
 }
 
 // ----------------------------------------------------------------------------
