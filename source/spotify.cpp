@@ -18,6 +18,7 @@
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
 static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
+static std::string sp_link_to_string(sp_link* link);
 
 // ----------------------------------------------------------------------------
 spotify_t::spotify_t(const std::string& audio_device_name,
@@ -1125,13 +1126,13 @@ static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const sp_trac
 {
   assert(sp_track_is_loaded(sp_track_ptr));
 
+  auto track = std::make_shared<track_t>(track_t{});
+
   sp_artist* artist;
   sp_album* album;
 
   sp_artist_add_ref(artist = sp_track_artist(sp_track_ptr, 0));
   sp_album_add_ref(album = sp_track_album(sp_track_ptr));
-
-  auto track = std::make_shared<track_t>(track_t{});
 
   track->track_id(sp_track_id(sp_track_ptr));
   track->title(sp_track_name(sp_track_ptr));
@@ -1140,9 +1141,34 @@ static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const sp_trac
   track->artist(sp_artist_name(artist));
   track->album(sp_album_name(album));
 
+  sp_link* cover_art_link = sp_link_create_from_album_cover(album, SP_IMAGE_SIZE_NORMAL);
+
+  if ( cover_art_link)
+  {
+    track->cover_id(sp_link_to_string(cover_art_link));
+    sp_link_release(cover_art_link);
+  }
+  else
+  {
+    LOG(INFO) << "cover_art_link is <null> " << track->title();
+  }
+
   sp_artist_release(artist);
   sp_album_release(album);
 
-  //return std::move(track);
   return track;
+}
+
+// ----------------------------------------------------------------------------
+static std::string sp_link_to_string(sp_link* link)
+{
+  char buf[128];
+
+  int l = sp_link_as_string(link, buf, sizeof(buf));
+
+  if ( static_cast<size_t>(l) >= sizeof(buf) ) {
+    LOG(ERROR) << "link string truncated";
+  }
+
+  return std::move(std::string(buf));
 }
