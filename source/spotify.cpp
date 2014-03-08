@@ -347,8 +347,8 @@ void spotify_t::main()
       {
         // Check if there are tracke to be added and/or removed in the
         // tracks to add/remove queues.
-        process_tracks_to_remove();
         process_tracks_to_add();
+        process_tracks_to_remove();
 
         // TODO: Check somehow if playlist import is done.
         if ( m_session_logged_in &&
