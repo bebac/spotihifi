@@ -400,23 +400,14 @@ void spotify_t::logged_in_handler()
   if ( sp_playlistcontainer_is_loaded(m_playlistcontainer) )
   {
     container_loaded_cb(m_playlistcontainer, this);
-
-    sp_playlistcontainer_callbacks container_callbacks = {
-      &playlist_added_cb,
-      0,
-      0,
-      0,
-    };
-
-    sp_playlistcontainer_add_callbacks(m_playlistcontainer, &container_callbacks, this);
   }
   else
   {
     sp_playlistcontainer_callbacks container_callbacks = {
-      &playlist_added_cb,
       0,
       0,
-      &container_loaded_cb,
+      0,
+      &container_loaded_cb
     };
 
     sp_playlistcontainer_add_callbacks(m_playlistcontainer, &container_callbacks, this);
@@ -1098,6 +1089,15 @@ void spotify_t::container_loaded_cb(sp_playlistcontainer *pc, void *userdata)
 
     self->import_playlist(pl);
   }
+
+  sp_playlistcontainer_callbacks container_callbacks = {
+    &playlist_added_cb,
+    0,
+    0,
+    0
+  };
+
+  sp_playlistcontainer_add_callbacks(pc, &container_callbacks, self);
 }
 
 // ----------------------------------------------------------------------------
