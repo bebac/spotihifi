@@ -342,7 +342,7 @@ void spotify_t::main()
     init();
     while ( m_running )
     {
-      auto cmd = m_command_queue.pop(std::chrono::milliseconds(500), [this]
+      auto cmd = m_command_queue.pop(std::chrono::milliseconds(2500), [this]
       {
         // Check if there are tracke to be added and/or removed in the
         // tracks to add/remove queues.
@@ -433,7 +433,7 @@ void spotify_t::logged_in_handler()
 void spotify_t::track_loaded_handler()
 {
   LOG(INFO) << "spotify_t::" << __FUNCTION__;
-  if ( !m_track_playing )
+  if ( !m_track_playing && m_track )
   {
     sp_error err;
 
@@ -668,9 +668,7 @@ void spotify_t::process_tracks_to_add()
     {
       track_ptr track;
 
-      auto track_id = sp_track_id(sp_track_ptr);
-
-      auto it = m_tracks.find(track_id);
+      auto it = m_tracks.find(sp_track_id(sp_track_ptr));
       if ( it != end(m_tracks) )
       {
         track = (*it).second;
@@ -686,8 +684,10 @@ void spotify_t::process_tracks_to_add()
 
       m_tracks[track->track_id()] = track;
 
-      // Add track to list of track to be inserted into playlist.
+      // Add track to list of tracks to be inserted into playlist.
       new_tracks.push_back(track);
+
+      sp_track_release(sp_track_ptr);
     }
 
     pl.insert(pl.begin()+data.position, new_tracks.begin(), new_tracks.end());
@@ -1022,6 +1022,9 @@ void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *track
 
   for ( int i=0; i<num_tracks; ++i )
   {
+    if ( sp_track_add_ref(tracks[i]) != SP_ERROR_OK ) {
+      LOG(ERROR) << "failed to add track ref";
+    }
     data.tracks[i] = tracks[i];
   }
 
