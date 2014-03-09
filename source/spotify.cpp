@@ -554,14 +554,12 @@ void spotify_t::play_track(const std::string& uri)
     }
     else {
       LOG(ERROR) << "'" << uri.c_str() << "' is not a track";
-      play_next_from_queue();
     }
 
     sp_link_release(link);
   }
   else {
     LOG(ERROR) << "failed to create link from '" << uri.c_str() << "'";
-    play_next_from_queue();
   }
 }
 
