@@ -171,7 +171,7 @@ public:
 
       std::string body = os.str();
 
-      std::vector<char> buf(4);
+      std::vector<unsigned char> buf(4);
 
       size_t len = body.length();
       buf[0] = len>>24;
@@ -257,7 +257,7 @@ private:
 private:
   void receive_and_process_request()
   {
-    char hbuf[4];
+    unsigned char hbuf[4];
 
     receive(hbuf, 4);
 
@@ -276,14 +276,14 @@ private:
 
     LOG(DEBUG) << "hlen=" << hlen;
 
-    std::vector<char> bbuf(hlen);
+    std::vector<unsigned char> bbuf(hlen);
 
     receive(bbuf.data(), hlen);
 
     json::value  doc;
     json::parser parser(doc);
 
-    size_t consumed = parser.parse(bbuf.data(), hlen);
+    size_t consumed = parser.parse(reinterpret_cast<char*>(bbuf.data()), hlen);
 
     LOG(DEBUG) << "parser consumed=" << consumed << ", complete=" << parser.complete();
     //std::cout << "body: '" << doc << "'" << std::endl;
@@ -314,7 +314,7 @@ private:
     }
   }
 private:
-  void receive(char* buf, size_t len)
+  void receive(unsigned char* buf, size_t len)
   {
     size_t i = 0;
     do
