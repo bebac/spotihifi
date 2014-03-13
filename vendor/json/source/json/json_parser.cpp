@@ -308,12 +308,27 @@ namespace json
             case '"':
             case '\\':
             case '/':
-            case '\b':
-            case '\f':
-            case '\n':
-            case '\r':
-            case '\t':
               value_.push_back(*it);
+              state_ = state::initial;
+              break;
+            case 'b':
+              value_.push_back('\b');
+              state_ = state::initial;
+              break;
+            case 'f':
+              value_.push_back('\f');
+              state_ = state::initial;
+              break;
+            case 'n':
+              value_.push_back('\n');
+              state_ = state::initial;
+              break;
+            case 'r':
+              value_.push_back('\r');
+              state_ = state::initial;
+              break;
+            case 't':
+              value_.push_back('\t');
               state_ = state::initial;
               break;
             case 'u':

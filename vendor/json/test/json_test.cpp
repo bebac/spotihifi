@@ -106,7 +106,7 @@ TEST_CASE( "string-escape", "[array]" )
   std::stringstream os;
   os << v1;
 
-  REQUIRE( os.str() == "[\"a\\\"b\\\"c\",\"a\\\\bc\",\"a\\/bc\",\"a\\\bbc\",\"a\\\fbc\",\"a\\\nbc\",\"a\\\rbc\",\"a\\\tbc\"]" );
+  REQUIRE( os.str() == "[\"a\\\"b\\\"c\",\"a\\\\bc\",\"a\\/bc\",\"a\\bbc\",\"a\\fbc\",\"a\\nbc\",\"a\\rbc\",\"a\\tbc\"]" );
 }
 
 // ----------------------------------------------------------------------------

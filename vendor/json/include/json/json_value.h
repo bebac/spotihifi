@@ -118,16 +118,14 @@ namespace json
       {
         switch ( c )
         {
-          case '"':
-          case '\\':
-          case '/':
-          case '\b':
-          case '\f':
-          case '\n':
-          case '\r':
-          case '\t':
-            result += '\\';
-            // FALL THROUGH INTENEDED
+          case '"':  result += "\\\""; break;
+          case '\\': result += "\\\\"; break;
+          case '/':  result += "\\/";  break;
+          case '\b': result += "\\b";  break;
+          case '\f': result += "\\f";  break;
+          case '\n': result += "\\n";  break;
+          case '\r': result += "\\r";  break;
+          case '\t': result += "\\t";  break;
           default:
             result += c;
         }
