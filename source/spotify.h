@@ -57,9 +57,9 @@ public:
 // ----------------------------------------------------------------------------
 struct playlist_add_data
 {
-  std::string                           playlist_name;
-  std::vector<sp_track *>               tracks;
-  size_t                                position;
+  std::string             playlist_name;
+  std::vector<sp_track *> tracks;
+  size_t                  position;
 };
 
 // ----------------------------------------------------------------------------
@@ -67,6 +67,14 @@ struct playlist_remove_data
 {
   std::string         playlist_name;
   std::vector<size_t> positions;
+};
+
+// ----------------------------------------------------------------------------
+struct loading_image_data
+{
+  std::string track_id;
+  std::string cover_id;
+  std::shared_ptr<std::promise<json::object>> promise;
 };
 
 // ----------------------------------------------------------------------------
@@ -99,6 +107,8 @@ public:
 public:
   std::future<json::object> get_tracks(long long incarnation = -1, long long transaction = -1);
 public:
+  std::future<json::object> get_cover(const std::string& track_id, const std::string& cover_id);
+public:
   void observer_attach(std::shared_ptr<player_observer_t> observer);
   void observer_detach(std::shared_ptr<player_observer_t> observer);
 public:
@@ -120,6 +130,7 @@ private:
   void start_playback_handler();
   void end_of_track_handler();
   void process_events_handler();
+  void image_loaded_handler(sp_image* image);
   void play_next_from_queue();
   void play_track(const std::string& uri);
   void import_playlist(sp_playlist* pl);
@@ -195,6 +206,8 @@ protected:
   // Observers
   std::vector<std::shared_ptr<player_observer_t>> observers;
   /////
+  // Loading images.
+  std::map<sp_image*, loading_image_data> m_loading_images;
   std::thread m_thr;
 };
 

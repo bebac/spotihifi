@@ -38,7 +38,7 @@ spec = Rake::ExecutableSpecification.new do |s|
         source/**/*.cpp
         source/appkey.c
     )
-    s.libraries += [ popt, json ] + %w(asound spotify)
+    s.libraries += [ popt, json ] + %w(asound b64 spotify)
 end
 
 # -----------------------------------------------------------------------------

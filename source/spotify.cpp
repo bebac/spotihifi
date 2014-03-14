@@ -15,6 +15,8 @@
 #include <random>
 #include <algorithm>
 
+#include <b64/encode.h>
+
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
 static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
@@ -218,6 +220,7 @@ void spotify_t::build_track_set_from_playlist(std::string playlist)
 std::future<json::object> spotify_t::get_tracks(long long incarnation, long long transaction)
 {
   auto promise = std::make_shared<std::promise<json::object>>();
+
   m_command_queue.push([=]()
   {
     LOG(INFO) << "get_tracks"
@@ -246,6 +249,56 @@ std::future<json::object> spotify_t::get_tracks(long long incarnation, long long
     }
     promise->set_value(result);
   });
+
+  return promise->get_future();
+}
+
+// ----------------------------------------------------------------------------
+std::future<json::object> spotify_t::get_cover(const std::string& track_id, const std::string& cover_id)
+{
+  auto promise = std::make_shared<std::promise<json::object>>();
+
+  m_command_queue.push([=]()
+  {
+    sp_link* link = sp_link_create_from_string(cover_id.c_str());
+
+    if ( !link || sp_link_type(link) != SP_LINKTYPE_IMAGE )
+    {
+      json::object result{ { "code", -1 }, { "message", "Invalid image uri" } };
+      promise->set_value(result);
+    }
+    else
+    {
+      sp_image* image = sp_image_create_from_link(m_session, link);
+
+      if ( !image )
+      {
+        json::object result{ { "code", -1 }, { "message", "Failed to create image" } };
+        promise->set_value(result);
+      }
+      else
+      {
+        LOG(INFO) << "created image from link ptr=" << reinterpret_cast<long long>(image) << ", error=" << sp_image_error(image);
+
+        m_loading_images[image] = loading_image_data{track_id, cover_id, promise};
+
+        sp_error res = sp_image_add_load_callback(image, [](sp_image *image, void *userdata)
+          {
+            spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
+            self->m_command_queue.push(std::bind(&spotify_t::image_loaded_handler, self, image));
+          },
+          this
+        );
+
+        if ( res != SP_ERROR_OK )
+        {
+          json::object result{ { "code", -1 }, { "message", "Failed to set image loaded callback" } };
+          promise->set_value(result);
+        }
+      }
+    }
+  });
+
   return promise->get_future();
 }
 
@@ -502,6 +555,45 @@ void spotify_t::process_events_handler()
   {
     sp_session_process_events(m_session, &m_session_next_timeout);
   } while (m_session_next_timeout == 0);
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::image_loaded_handler(sp_image* image)
+{
+  size_t size;
+  const void * image_data;
+
+  image_data = sp_image_data(image, &size);
+
+  LOG(INFO) << "image loaded ptr=" << reinterpret_cast<long long>(image) << ", data=" << reinterpret_cast<long long>(image_data) << ", size=" << size;
+
+  auto data = m_loading_images[image];
+
+  std::string image_data_s(reinterpret_cast<const char*>(image_data), size);
+
+  std::stringstream is;
+  std::stringstream os;
+
+  is.str(image_data_s);
+
+  base64::encoder b64;
+
+  b64.encode(is, os);
+
+  json::object result{
+    { "track_id", data.track_id },
+    { "cover_id", data.cover_id }
+  };
+
+  result["image_format"] = "jpg";
+  result["image_data"] = os.str();
+
+  // Remove image pointer from loading images map.
+  m_loading_images.erase(image);
+  // Decrement image ref count.
+  sp_image_release(image);
+
+  data.promise->set_value(result);
 }
 
 // ----------------------------------------------------------------------------

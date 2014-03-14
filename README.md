@@ -12,8 +12,8 @@ system and be able to control it from your tablet, phone and/or laptop.
 
 
 
-What do I need to get started
------------------------------
+Building
+--------
 
 It is written in c++ using c++11 features, so you'll need a fairly new gcc.
 It is known to compile with gcc 4.6.3 and above.
@@ -23,9 +23,10 @@ spotify development site and place it in the vendor directory:
 
     vendor/libspotify-12.1.51-Linux-x86_64-release
 
-libasound is used to playback audio. On Ubuntu do:
+libasound is used to playback audio and libb64 is used to encode/decode binary
+data. On Ubuntu do:
 
-    sudo apt-get install libasound2-dev
+    sudo apt-get install libasound2-dev libb64-dev
 
 I have not included the spotify application key in the repository, so you
 need to apply for one and place the appkey.c in the source folder.
@@ -182,3 +183,20 @@ To start playback from all tracks:
     <-- { "jsonrpc" : "2.0", "method" : "pb-event", "params" : { "state" : "skip" }
 
     # NOTE: Still needs some work in order to show elapsed and remaining time.
+
+### Getting Album Cover Art
+
+    --> { "jsonrpc" : "2.0", "method" : "get-cover", "params":
+          {
+            "track_id":"4Ow69aTiwMm23ZlONLBWoY",
+            "cover_id":"spotify:image:22c2f9b7e465bdf04e3f9f9f39117350cc611143"
+          }, "id" : 9
+        }
+    <-- { "jsonrpc" : "2.0", "result" :
+          {
+            "track_id"     : "4Ow69aTiwMm23ZlONLBWoY",
+            "cover_id"     : "spotify:image:22c2f9b7e465bdf04e3f9f9f39117350cc611143",
+            "image_format" : "jpg",
+            "image_data"   : <base64 encoded string>
+          }, "id" : 9
+        }

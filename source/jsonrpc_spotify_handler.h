@@ -134,6 +134,27 @@ public:
 
       response["result"] = "ok";
     }
+    else if ( method == "get-cover" )
+    {
+      if ( params.is_object() )
+      {
+        json::object o = params.as_object();
+
+        if ( o["track_id"].is_string() && o["cover_id"].is_string() )
+        {
+          auto v = spotify.get_cover(o["track_id"].as_string(), o["cover_id"].as_string()).get();
+          response["result"] = v;
+        }
+        else
+        {
+          response["error"] = json::object{ { "code", -32602 }, { "message", "Invalid parameters" } };
+        }
+      }
+      else
+      {
+        response["error"] = json::object{ { "code", -32602 }, { "message", "Invalid parameters" } };
+      }
+    }
     else
     {
       response["error"] = json::object{ { "code", -32601 }, { "message", "Method not found" } };
