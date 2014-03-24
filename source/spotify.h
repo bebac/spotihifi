@@ -90,7 +90,8 @@ public:
             const std::string& cache_dir,
             const std::string& last_fm_username,
             const std::string& last_fm_password,
-            const std::string& track_stat_filename);
+            const std::string& track_stat_filename,
+            bool volume_normalization);
 public:
   ~spotify_t();
 public:
@@ -195,6 +196,8 @@ protected:
   long long        m_tracks_transaction;
   std::string      m_track_stat_filename;
   track_stat_map_t m_track_stats;
+  /////
+  bool m_volume_normalization;
   /////
   // Tracks to add/remove
   std::queue<playlist_add_data> m_tracks_to_add;

@@ -44,7 +44,8 @@ public:
     conf_filename("spotihifi.conf"),
     cache_dir("spotihifi_cache"),
     last_fm_username(),
-    last_fm_password()
+    last_fm_password(),
+    volume_normalization(false)
   {
     add('h', "help", "display this message", help);
     add('a', "address", "local interface ip address to bind to", address, "IP");
@@ -67,6 +68,7 @@ public:
   std::string last_fm_username;
   std::string last_fm_password;
   std::string track_stat_filename;
+  bool        volume_normalization;
 };
 
 // ----------------------------------------------------------------------------
@@ -118,6 +120,20 @@ void parse_conf_file(const std::string& filename, options& options)
     if ( conf["track_stat_filename"].is_string() ) {
       options.track_stat_filename = conf["track_stat_filename"].as_string();
     }
+
+    if ( !conf["volume_normalization"].is_null() )
+    {
+      if ( conf["volume_normalization"].is_true() ) {
+        options.volume_normalization = true;
+      }
+      else if ( conf["volume_normalization"].is_false() ) {
+        options.volume_normalization = false;
+      }
+      else {
+        throw std::runtime_error("configuration file error - volume_normalization must be true or false!");
+      }
+    }
+
   }
   catch (const std::exception& e)
   {
@@ -364,7 +380,7 @@ int main(int argc, char *argv[])
 
     if ( options.help )
     {
-      std::cout << "Usage: spotihifid v0.1.4 [OPTION...]" << std::endl
+      std::cout << "Usage: spotihifid v0.1.5 [OPTION...]" << std::endl
                 << std::endl
                 << "spotihifi daemon" << std::endl
                 << std::endl
@@ -378,7 +394,14 @@ int main(int argc, char *argv[])
 
     parse_conf_file(options.conf_filename, options);
 
-    spotify_t spotify(options.audio_device_name, options.cache_dir, options.last_fm_username, options.last_fm_password, options.track_stat_filename);
+    spotify_t spotify(
+      options.audio_device_name,
+      options.cache_dir,
+      options.last_fm_username,
+      options.last_fm_password,
+      options.track_stat_filename,
+      options.volume_normalization
+    );
 
     spotify.login(options.username, options.password);
 

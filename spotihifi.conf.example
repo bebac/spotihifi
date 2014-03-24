@@ -6,6 +6,13 @@
 
   "cache_dir"         : "/tmp/spotihifi_cache",
 
+  // Scrobble to last.fm.
   "last_fm_username"  : "...",
   "last_fm_password"  : "..."
+
+  // Save play statistics and auto ratings to file.
+  "track_stat_filename"  : "track_stats.yml",
+
+  // Enable spotify volume normalization.
+  "volume_normalization" : false
 }

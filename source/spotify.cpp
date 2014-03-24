@@ -27,7 +27,8 @@ spotify_t::spotify_t(const std::string& audio_device_name,
                      const std::string& cache_dir,
                      const std::string& last_fm_username,
                      const std::string& last_fm_password,
-                     const std::string& track_stat_filename)
+                     const std::string& track_stat_filename,
+                     bool volume_normalization)
   :
   m_session(0),
   m_session_logged_in(false),
@@ -49,6 +50,7 @@ spotify_t::spotify_t(const std::string& audio_device_name,
   m_tracks_transaction(0), // Always zero for now.
   m_track_stat_filename(track_stat_filename),
   /////
+  m_volume_normalization(false),
   m_continued_playback(true),
   m_thr{&spotify_t::main, this}
 {
@@ -377,7 +379,7 @@ void spotify_t::init()
     throw spotify_error(error);
   }
 
-  error = sp_session_set_volume_normalization(m_session, true);
+  error = sp_session_set_volume_normalization(m_session, m_volume_normalization);
   if ( SP_ERROR_OK != error ) {
     throw spotify_error(error);
   }
