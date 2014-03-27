@@ -791,26 +791,39 @@ void spotify_t::process_tracks_to_remove()
 {
   if ( m_tracks_to_remove.size() > 0 )
   {
-    auto  data = m_tracks_to_remove.front();
-    auto& pl   = m_playlists[data.playlist_name];
-
-    //LOG(INFO) << "### BEFORE REMOVE " << data.playlist_name;
-    //for ( auto& track : pl )
-    //{
-    //  LOG(INFO) << to_json(*track);
-    //}
-
-    for ( size_t pos : data.positions )
+    auto data = m_tracks_to_remove.front();
+    try
     {
-      auto& track = pl[pos];
+      auto& pl = m_playlists.at(data.playlist_name);
 
-      track->playlists_remove(data.playlist_name);
+      //LOG(INFO) << "### BEFORE REMOVE " << data.playlist_name;
+      //for ( auto& track : pl )
+      //{
+      //  LOG(INFO) << to_json(*track);
+      //}
 
-      LOG(INFO) << "removed track " << to_json(*track) << " from playlist '" << data.playlist_name << "'";
+      for ( size_t pos : data.positions )
+      {
+        try
+        {
+          auto& track = pl.at(pos);
 
-      pl.erase(pl.begin()+pos);
+          track->playlists_remove(data.playlist_name);
 
-      // TODO: Remove from track map if playlist set is empty?
+          LOG(INFO) << "removed track " << to_json(*track) << " from playlist '" << data.playlist_name << "'";
+
+          pl.erase(pl.begin()+pos);
+        }
+        catch(const std::out_of_range&)
+        {
+          LOG(ERROR) << "process_tracks_to_remove - pos '" << pos << "' out of range";
+        }
+        // TODO: Remove from track map if playlist set is empty?
+      }
+    }
+    catch(const std::out_of_range&)
+    {
+      LOG(ERROR) << "process_tracks_to_remove - playlist '" << data.playlist_name << "' not found";
     }
 
     m_tracks_to_remove.pop();
@@ -933,7 +946,7 @@ inline void spotify_t::metadata_updated_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::connection_error_cb(sp_session *session, sp_error error)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  LOG(INFO) << "callback:  " << __FUNCTION__ << " " << sp_error_message(error);
 }
 
 // ----------------------------------------------------------------------------
