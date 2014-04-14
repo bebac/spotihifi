@@ -507,8 +507,10 @@ void spotify_t::start_playback_handler()
     if ( it != end(m_tracks) ) {
       player_state_notify("playing", (*it).second);
     }
-    else {
-      LOG(ERROR) << "track id " << sp_track_id(m_track) << " not found in database!";
+    else
+    {
+      auto track_ptr = make_track_from_sp_track(m_track);
+      player_state_notify("playing", track_ptr);
     }
 
     m_track_playing = true;
