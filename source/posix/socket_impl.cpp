@@ -111,11 +111,21 @@ size_t socket_impl::send(const void *buf, size_t len, int flags)
 // ----------------------------------------------------------------------------
 void socket_impl::nonblocking(bool value)
 {
-    int blocking = ( value ? 1 : 0 );
+  int blocking = ( value ? 1 : 0 );
 
-    if ( ::ioctl(m_fd, FIONBIO, (char*)&blocking) < 0 ) {
-      throw socket_error(errno);
-    }
+  if ( ::ioctl(m_fd, FIONBIO, (char*)&blocking) < 0 ) {
+    throw socket_error(errno);
+  }
+}
+
+// ----------------------------------------------------------------------------
+void socket_impl::reuseaddr(bool value)
+{
+  int v = ( value ? 1 : 0 );
+
+  if ( setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(int)) == -1 ) {
+    throw socket_error(errno);
+  }
 }
 
 // ----------------------------------------------------------------------------

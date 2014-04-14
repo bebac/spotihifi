@@ -409,6 +409,7 @@ int main(int argc, char *argv[])
 
     LOG(INFO) << "starting server on " << options.address << ":" << options.port << " CTRL-C to stop";
 
+    listener.reuseaddr(true);
     listener.bind(inet::socket_address(options.address.c_str(), options.port));
     listener.listen(5);
 

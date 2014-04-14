@@ -114,6 +114,13 @@ void socket::nonblocking(bool value)
 }
 
 // ----------------------------------------------------------------------------
+void socket::reuseaddr(bool value)
+{
+    assert(pimpl.get());
+    pimpl->reuseaddr(value);
+}
+
+// ----------------------------------------------------------------------------
 int socket::get_fd()
 {
   assert(pimpl.get());

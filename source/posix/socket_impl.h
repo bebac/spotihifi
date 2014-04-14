@@ -41,6 +41,7 @@ public:
   size_t send(const void *buf, size_t len, int flags);
 public:
   void nonblocking(bool value);
+  void reuseaddr(bool value);
 public:
   int get_fd();
 private:
