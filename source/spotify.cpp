@@ -264,10 +264,38 @@ std::future<json::object> spotify_t::get_cover(const std::string& track_id, cons
   {
     sp_link* link = sp_link_create_from_string(cover_id.c_str());
 
+    if ( link && sp_link_type(link) == SP_LINKTYPE_ALBUM )
+    {
+      sp_album* album = sp_link_as_album(link);
+      sp_album_add_ref(album);
+
+      if ( !sp_album_is_loaded(album) )
+      {
+        // This is pretty horrible! For now raise an error and trigger album
+        // loading by creating an album browse.
+
+        json::object result{ { "code", -2 }, { "message", "album not loaded" } };
+        promise->set_value(json::object{ {"error", result} });
+
+        sp_albumbrowse_create(m_session, album, [](sp_albumbrowse *result, void *userdata) {
+            sp_albumbrowse_release(result);
+            sp_album_release((sp_album*)userdata);
+          },
+          album
+        );
+
+        return;
+      }
+
+      link = sp_link_create_from_album_cover(album, SP_IMAGE_SIZE_NORMAL);
+
+      sp_album_release(album);
+    }
+
     if ( !link || sp_link_type(link) != SP_LINKTYPE_IMAGE )
     {
       json::object result{ { "code", -1 }, { "message", "Invalid image uri" } };
-      promise->set_value(result);
+      promise->set_value(json::object{ {"error", result} });
     }
     else
     {
@@ -276,7 +304,7 @@ std::future<json::object> spotify_t::get_cover(const std::string& track_id, cons
       if ( !image )
       {
         json::object result{ { "code", -1 }, { "message", "Failed to create image" } };
-        promise->set_value(result);
+        promise->set_value(json::object{ {"error", result} });
       }
       else
       {
@@ -295,7 +323,7 @@ std::future<json::object> spotify_t::get_cover(const std::string& track_id, cons
         if ( res != SP_ERROR_OK )
         {
           json::object result{ { "code", -1 }, { "message", "Failed to set image loaded callback" } };
-          promise->set_value(result);
+          promise->set_value(json::object{ {"error", result} });
         }
       }
     }
@@ -794,6 +822,7 @@ void spotify_t::process_tracks_to_remove()
   if ( m_tracks_to_remove.size() > 0 )
   {
     auto data = m_tracks_to_remove.front();
+
     try
     {
       auto& pl = m_playlists.at(data.playlist_name);
@@ -1117,6 +1146,15 @@ void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *track
     pl_name = "Starred";
   }
 
+  auto user = sp_playlist_owner(pl);
+  auto is_collaborative = sp_playlist_is_collaborative(pl);
+
+  LOG(INFO) << "playlist tracks added - playlist=\"" << pl_name << "\" "
+            << "num_tracks=" << num_tracks << " "
+            << "position=" << position << " "
+            << "owner=\"" << sp_user_canonical_name(user) << "\" "
+            << "is_collaborative=" << (is_collaborative ? "true" : "false");
+
   playlist_add_data data{pl_name, std::vector<sp_track *>{size_t(num_tracks)}, size_t(position)};
 
   for ( int i=0; i<num_tracks; ++i )
@@ -1147,7 +1185,15 @@ void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, i
     pl_name = "Starred";
   }
 
-  playlist_remove_data data{pl_name, std::vector<size_t>{size_t(num_tracks)}};
+  auto user = sp_playlist_owner(pl);
+  auto is_collaborative = sp_playlist_is_collaborative(pl);
+
+  LOG(INFO) << "playlist tracks removed - playlist=\"" << pl_name << "\" "
+            << "num_tracks=" << num_tracks << " "
+            << "owner=\"" << sp_user_canonical_name(user) << "\" "
+            << "is_collaborative=" << (is_collaborative ? "true" : "false");
+
+  playlist_remove_data data{pl_name, std::vector<size_t>{size_t(num_tracks)}, sp_user_canonical_name(user), is_collaborative};
 
   for ( int i=0; i<num_tracks; i++ )
   {

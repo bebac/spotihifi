@@ -143,7 +143,12 @@ public:
         if ( o["track_id"].is_string() && o["cover_id"].is_string() )
         {
           auto v = spotify.get_cover(o["track_id"].as_string(), o["cover_id"].as_string()).get();
-          response["result"] = v;
+          if ( !v["error"].is_null() ) {
+            response["error"] = std::move(v["error"]);
+          }
+          else {
+            response["result"] = std::move(v);
+          }
         }
         else
         {

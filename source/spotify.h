@@ -67,6 +67,8 @@ struct playlist_remove_data
 {
   std::string         playlist_name;
   std::vector<size_t> positions;
+  std::string         owner;
+  bool                is_collaborative;
 };
 
 // ----------------------------------------------------------------------------
