@@ -19,8 +19,8 @@
 
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
+static std::string sp_album_id(sp_album* album);
 static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
-static std::string sp_link_to_string(sp_link* link);
 
 // ----------------------------------------------------------------------------
 spotify_t::spotify_t(const std::string& audio_device_name,
@@ -1281,12 +1281,33 @@ static std::string sp_track_id(sp_track* track)
   sp_link_release(link);
 
   if ( static_cast<size_t>(l) >= sizeof(buf) ) {
-    _log_(error) << "link string truncated";
+    _log_(error) << "track link string truncated";
   }
 
   std::string result(buf);
 
   // We want the id without 'spotify:track:'
+  result = result.substr(result.rfind(':')+1);
+
+  return std::move(result);
+}
+
+// ----------------------------------------------------------------------------
+static std::string sp_album_id(sp_album* album)
+{
+  char buf[128];
+
+  sp_link* link = sp_link_create_from_album(album);
+  int l = sp_link_as_string(link, buf, sizeof(buf));
+  sp_link_release(link);
+
+  if ( static_cast<size_t>(l) >= sizeof(buf) ) {
+    _log_(error) << "album link string truncated";
+  }
+
+  std::string result(buf);
+
+  // We want the id without 'spotify:album:'
   result = result.substr(result.rfind(':')+1);
 
   return std::move(result);
@@ -1311,35 +1332,10 @@ static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const sp_trac
   track->duration(sp_track_duration(sp_track_ptr));
   track->artist(sp_artist_name(artist));
   track->album(sp_album_name(album));
-
-  sp_link* cover_art_link = sp_link_create_from_album_cover(album, SP_IMAGE_SIZE_NORMAL);
-
-  if ( cover_art_link)
-  {
-    track->cover_id(sp_link_to_string(cover_art_link));
-    sp_link_release(cover_art_link);
-  }
-  else
-  {
-    _log_(info) << "cover_art_link is <null> " << track->title();
-  }
+  track->album_id(sp_album_id(album));
 
   sp_artist_release(artist);
   sp_album_release(album);
 
   return track;
-}
-
-// ----------------------------------------------------------------------------
-static std::string sp_link_to_string(sp_link* link)
-{
-  char buf[128];
-
-  int l = sp_link_as_string(link, buf, sizeof(buf));
-
-  if ( static_cast<size_t>(l) >= sizeof(buf) ) {
-    _log_(error) << "link string truncated";
-  }
-
-  return std::move(std::string(buf));
 }
