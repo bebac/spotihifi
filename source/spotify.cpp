@@ -339,7 +339,22 @@ void spotify_t::observer_attach(std::shared_ptr<player_observer_t> observer)
   m_command_queue.push([=]()
   {
     observers.push_back(observer);
+
     _log_(info) << "attached observer " << observer << " (" << observers.size() << ")";
+
+    if ( m_track_playing && m_track && sp_track_is_loaded(m_track) )
+    {
+      auto track_ptr = make_track_from_sp_track(m_track);
+
+      if ( track_ptr )
+      {
+        json::object event{ { "state", "playing" } };
+
+        event["track"] = to_json(*track_ptr);
+
+        observer->player_state_event(std::move(event));
+      }
+    }
   });
 }
 
