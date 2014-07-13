@@ -60,7 +60,7 @@ public:
 public:
   virtual void call_method(const std::string& method, json::value params, json::object& response)
   {
-    LOG(INFO) << "method: '" << method << "', params:" << params;
+    _log_(info) << "method: '" << method << "', params:" << params;
 
     if ( method == "sync" )
     {
@@ -80,9 +80,10 @@ public:
 
       auto v = spotify.get_tracks(incarnation, transaction).get();
 
-      LOG(INFO) << "sync result"
-                << " incarnation=" << v["incarnation"].as_string()
-                << ", transaction=" << v["transaction"].as_string();
+      _log_(info)
+        << "sync result"
+        << " incarnation=" << v["incarnation"].as_string()
+        << ", transaction=" << v["transaction"].as_string();
 
       response["result"] = v;
     }
@@ -163,7 +164,7 @@ public:
     else
     {
       response["error"] = json::object{ { "code", -32601 }, { "message", "Method not found" } };
-      LOG(ERROR) << response;
+      _log_(error) << response;
     }
   }
 public:
@@ -177,7 +178,7 @@ public:
   //
   void player_state_event(json::object event)
   {
-    LOG(INFO) << __FUNCTION__ << " " << event;
+    _log_(info) << __FUNCTION__ << " " << event;
     if ( notify_sender )
     {
       json::object notify{

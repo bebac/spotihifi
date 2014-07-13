@@ -232,25 +232,25 @@ public:
       while ( m_running )
       {
         auto cmd = m_cmdq.pop(std::chrono::seconds(60), [this]{
-          LOG(DEBUG) << "client connection idle";
+          _log_(debug) << "client connection idle";
           send(json::object());
         });
         cmd();
       }
       // Join receive thread before terminating.
-      LOG(DEBUG) << "client connection joining receiver";
+      _log_(debug) << "client connection joining receiver";
       receive_thr.join();
-      LOG(INFO) << "client connection terminated";
+      _log_(info) << "client connection terminated";
     }
     catch(std::exception& e) {
-      LOG(DEBUG) << "client connection joining receiver";
+      _log_(debug) << "client connection joining receiver";
       receive_thr.join();
-      LOG(ERROR) << "client connection terminated! " << e.what();
+      _log_(error) << "client connection terminated! " << e.what();
     }
     catch(...) {
-      LOG(DEBUG) << "client connection joining receiver";
+      _log_(debug) << "client connection joining receiver";
       receive_thr.join();
-      LOG(ERROR) << "client connection terminated!";
+      _log_(error) << "client connection terminated!";
     }
   }
 private:
@@ -262,11 +262,11 @@ private:
       }
     }
     catch(const std::exception& e) {
-      LOG(ERROR) << "client connection receive error! " << e.what();
+      _log_(error) << "client connection receive error! " << e.what();
       disconnect();
     }
     catch(...) {
-      LOG(ERROR) << "client connection receive error!";
+      _log_(error) << "client connection receive error!";
       disconnect();
     }
   }
@@ -277,7 +277,7 @@ private:
 
     receive(hbuf, 4);
 
-    LOG(DEBUG) << "hbuf:"
+    _log_(debug) << "hbuf:"
         << static_cast<int>(hbuf[0]) << ", "
         << static_cast<int>(hbuf[1]) << ", "
         << static_cast<int>(hbuf[2]) << ", "
@@ -290,7 +290,7 @@ private:
     hlen += hbuf[1]<<16;
     hlen += hbuf[0]<<24;
 
-    LOG(DEBUG) << "hlen=" << hlen;
+    _log_(debug) << "hlen=" << hlen;
 
     std::vector<unsigned char> bbuf(hlen);
 
@@ -301,7 +301,7 @@ private:
 
     size_t consumed = parser.parse(reinterpret_cast<char*>(bbuf.data()), hlen);
 
-    LOG(DEBUG) << "parser consumed=" << consumed << ", complete=" << parser.complete();
+    _log_(debug) << "parser consumed=" << consumed << ", complete=" << parser.complete();
     //std::cout << "body: '" << doc << "'" << std::endl;
 
     auto request = jsonrpc_request::from_json(doc);
@@ -310,7 +310,7 @@ private:
     {
       json::object response{ { "jsonrpc", "2.0" }, { "id", request.id() } };
 
-      LOG(DEBUG) << "received request " << doc;
+      _log_(debug) << "received request " << doc;
 
       m_handler->call_method(request.method(), request.params(), response);
 
@@ -318,7 +318,7 @@ private:
     }
     else
     {
-      LOG(INFO) << "invalid jsonrpc request: " << request.error();
+      _log_(info) << "invalid jsonrpc request: " << request.error();
 
       json::object response{
         { "jsonrpc", "2.0" },
@@ -353,7 +353,7 @@ private:
 void sig_handler(int signum)
 {
   std::cerr << std::endl;
-  LOG(INFO) << "got signal " << signum;
+  _log_(info) << "got signal " << signum;
   throw std::runtime_error("interrupted");
 }
 
@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 
     if ( options.help )
     {
-      std::cout << "Usage: spotihifid v0.1.5 [OPTION...]" << std::endl
+      std::cout << "Usage: spotihifid v0.1.6 [OPTION...]" << std::endl
                 << std::endl
                 << "spotihifi daemon" << std::endl
                 << std::endl
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 
     inet::tcp::socket listener;
 
-    LOG(INFO) << "starting server on " << options.address << ":" << options.port << " CTRL-C to stop";
+    _log_(info) << "starting server on " << options.address << ":" << options.port << " CTRL-C to stop";
 
     listener.reuseaddr(true);
     listener.bind(inet::socket_address(options.address.c_str(), options.port));
@@ -419,7 +419,7 @@ int main(int argc, char *argv[])
     {
       inet::tcp::socket client = listener.accept(client_address);
 
-      LOG(INFO) << "client "
+      _log_(info) << "client "
                 << client_address.ip() << ":" << client_address.port()
                 << " connected";
 
@@ -432,6 +432,6 @@ int main(int argc, char *argv[])
               << "try: example --help" << std::endl;
   }
   catch(const std::exception& err) {
-    LOG(FATAL) << err.what();
+    _log_(fatal) << err.what();
   }
 }

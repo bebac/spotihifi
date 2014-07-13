@@ -54,18 +54,18 @@ spotify_t::spotify_t(const std::string& audio_device_name,
   m_continued_playback(true),
   m_thr{&spotify_t::main, this}
 {
-  LOG(DEBUG) << "constructed spotify instance " << this;
+  _log_(debug) << "constructed spotify instance " << this;
 }
 
 // ----------------------------------------------------------------------------
 spotify_t::~spotify_t()
 {
-  LOG(DEBUG) << "begin destruction of spotify instance " << this;
+  _log_(debug) << "begin destruction of spotify instance " << this;
   if ( m_running ) {
     stop();
   }
   m_thr.join();
-  LOG(DEBUG) << "end destruction of spotify instance " << this;
+  _log_(debug) << "end destruction of spotify instance " << this;
 }
 
 // ----------------------------------------------------------------------------
@@ -160,7 +160,7 @@ void spotify_t::player_skip()
 
       m_track_stats[track_id].increase_skip_count();
 
-      LOG(INFO) << "track stat update " << to_json(m_track_stats[track_id]);
+      _log_(info) << "track stat update " << to_json(m_track_stats[track_id]);
 
       sp_track_release(m_track);
       m_track = 0;
@@ -203,7 +203,7 @@ void spotify_t::build_track_set_from_playlist(std::string playlist)
 {
   m_command_queue.push([=]()
   {
-    LOG(INFO) << "build_track_set_from_playlist playlist=" << playlist;
+    _log_(info) << "build_track_set_from_playlist playlist=" << playlist;
     m_continued_playback_tracks.clear();
     for ( auto& t : m_tracks )
     {
@@ -225,11 +225,12 @@ std::future<json::object> spotify_t::get_tracks(long long incarnation, long long
 
   m_command_queue.push([=]()
   {
-    LOG(INFO) << "get_tracks"
-              << " m_tracks_incarnation=" << m_tracks_incarnation
-              << ", incarnation=" << incarnation
-              << ", m_tracks_transaction=" << m_tracks_transaction
-              << ", transaction=" << transaction;
+    _log_(info)
+      << "get_tracks"
+      << " m_tracks_incarnation=" << m_tracks_incarnation
+      << ", incarnation=" << incarnation
+      << ", m_tracks_transaction=" << m_tracks_transaction
+      << ", transaction=" << transaction;
 
     json::object result{
       { "incarnation", std::to_string(m_tracks_incarnation) },
@@ -308,7 +309,7 @@ std::future<json::object> spotify_t::get_cover(const std::string& track_id, cons
       }
       else
       {
-        LOG(INFO) << "created image from link ptr=" << reinterpret_cast<long long>(image) << ", error=" << sp_image_error(image);
+        _log_(info) << "created image from link ptr=" << reinterpret_cast<long long>(image) << ", error=" << sp_image_error(image);
 
         m_loading_images[image] = loading_image_data{track_id, cover_id, promise};
 
@@ -338,7 +339,7 @@ void spotify_t::observer_attach(std::shared_ptr<player_observer_t> observer)
   m_command_queue.push([=]()
   {
     observers.push_back(observer);
-    LOG(INFO) << "attached observer " << observer << " (" << observers.size() << ")";
+    _log_(info) << "attached observer " << observer << " (" << observers.size() << ")";
   });
 }
 
@@ -349,7 +350,7 @@ void spotify_t::observer_detach(std::shared_ptr<player_observer_t> observer)
   {
     auto it = std::find(observers.begin(), observers.end(), observer);
     observers.erase(it);
-    LOG(INFO) << "detached observer " << observer << " (" << observers.size() << ")";
+    _log_(info) << "detached observer " << observer << " (" << observers.size() << ")";
   });
 }
 
@@ -445,19 +446,19 @@ void spotify_t::main()
       cmd();
     }
 
-    LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
+    _log_(info) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
     sp_session_release(m_session);
   }
   catch(std::exception& e)
   {
-    LOG(FATAL) << "spotify_t::" << __FUNCTION__ << " error=" << e.what();
-    LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
+    _log_(fatal) << "spotify_t::" << __FUNCTION__ << " error=" << e.what();
+    _log_(info) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
     sp_session_release(m_session);
   }
   catch(...)
   {
-    LOG(FATAL) << "spotify_t::" << __FUNCTION__ << " unknown error";
-    LOG(INFO) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
+    _log_(fatal) << "spotify_t::" << __FUNCTION__ << " unknown error";
+    _log_(info) << "spotify_t::" << __FUNCTION__ << " releasing session " << m_session;
     sp_session_release(m_session);
   }
 }
@@ -465,7 +466,7 @@ void spotify_t::main()
 // ----------------------------------------------------------------------------
 void spotify_t::logged_in_handler()
 {
-  LOG(DEBUG) << "spotify_t::" << __FUNCTION__;
+  _log_(debug) << "spotify_t::" << __FUNCTION__;
 
   m_session_logged_in = true;
 
@@ -498,7 +499,7 @@ void spotify_t::logged_in_handler()
 
   if ( m_last_fm_username.length() > 0 )
   {
-    LOG(INFO) << "scrobbling to last.fm";
+    _log_(info) << "scrobbling to last.fm";
     sp_session_set_social_credentials(m_session, SP_SOCIAL_PROVIDER_LASTFM, m_last_fm_username.c_str(), m_last_fm_password.c_str());
     sp_session_set_scrobbling(m_session, SP_SOCIAL_PROVIDER_LASTFM, SP_SCROBBLING_STATE_LOCAL_ENABLED);
   }
@@ -507,17 +508,17 @@ void spotify_t::logged_in_handler()
 // ----------------------------------------------------------------------------
 void spotify_t::track_loaded_handler()
 {
-  LOG(INFO) << "spotify_t::" << __FUNCTION__;
+  _log_(info) << "spotify_t::" << __FUNCTION__;
   if ( !m_track_playing && m_track )
   {
     sp_error err;
 
     if ( (err=sp_session_player_load(m_session, m_track)) != SP_ERROR_OK ) {
-      LOG(ERROR) << "sp_session_player_load error " << err;
+      _log_(error) << "sp_session_player_load error " << err;
     }
 
     if ( (err=sp_session_player_play(m_session, 1)) != SP_ERROR_OK ) {
-      LOG(ERROR) << "sp_session_player_play error " << err;
+      _log_(error) << "sp_session_player_play error " << err;
     }
 
     // Not sure why, but have to set it here to get start playback callback.
@@ -545,14 +546,14 @@ void spotify_t::start_playback_handler()
   }
   else
   {
-    LOG(ERROR) << "m_track is null on start playback";
+    _log_(error) << "m_track is null on start playback";
   }
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::end_of_track_handler()
 {
-  LOG(INFO) << "spotify_t::" << __FUNCTION__;
+  _log_(info) << "spotify_t::" << __FUNCTION__;
 
   assert(m_session);
   assert(m_track);
@@ -568,7 +569,7 @@ void spotify_t::end_of_track_handler()
 
   m_track_stats[track_id].increase_play_count();
 
-  LOG(INFO) << "track stat update " << to_json(m_track_stats[track_id]);
+  _log_(info) << "track stat update " << to_json(m_track_stats[track_id]);
 
   // Release current track.
   sp_session_player_unload(m_session);
@@ -597,7 +598,7 @@ void spotify_t::image_loaded_handler(sp_image* image)
 
   image_data = sp_image_data(image, &size);
 
-  LOG(INFO) << "image loaded ptr=" << reinterpret_cast<long long>(image) << ", data=" << reinterpret_cast<long long>(image_data) << ", size=" << size;
+  _log_(info) << "image loaded ptr=" << reinterpret_cast<long long>(image) << ", data=" << reinterpret_cast<long long>(image_data) << ", size=" << size;
 
   auto data = m_loading_images[image];
 
@@ -648,7 +649,7 @@ void spotify_t::play_next_from_queue()
 
     uri += m_continued_playback_tracks[index];
 
-    LOG(INFO) << "continued playback uri " << uri;
+    _log_(info) << "continued playback uri " << uri;
 
     play_track(uri);
   }
@@ -677,13 +678,13 @@ void spotify_t::play_track(const std::string& uri)
       }
     }
     else {
-      LOG(ERROR) << "'" << uri.c_str() << "' is not a track";
+      _log_(error) << "'" << uri.c_str() << "' is not a track";
     }
 
     sp_link_release(link);
   }
   else {
-    LOG(ERROR) << "failed to create link from '" << uri.c_str() << "'";
+    _log_(error) << "failed to create link from '" << uri.c_str() << "'";
   }
 }
 
@@ -693,7 +694,7 @@ void spotify_t::import_playlist(sp_playlist* sp_pl_ptr)
   m_command_queue.push([=]()
   {
     if ( ! sp_playlist_is_loaded(sp_pl_ptr) ) {
-      //LOG(DEBUG) << "playlist not loaded!";
+      //_log_(debug) << "playlist not loaded!";
       import_playlist(sp_pl_ptr);
       return;
     }
@@ -711,7 +712,7 @@ void spotify_t::import_playlist(sp_playlist* sp_pl_ptr)
       sp_track* track = sp_playlist_track(sp_pl_ptr, i);
       if ( ! sp_track_is_loaded(track) )
       {
-        //LOG(DEBUG) << "waiting for tracks to load for playlist " << pl_name;
+        //_log_(debug) << "waiting for tracks to load for playlist " << pl_name;
         import_playlist(sp_pl_ptr);
         return;
       }
@@ -739,13 +740,13 @@ void spotify_t::import_playlist(sp_playlist* sp_pl_ptr)
         m_tracks[track->track_id()] = pl[i] = track;
       }
       else {
-        LOG(WARNING) << "track unavailable " << to_json(*track);
+        _log_(warning) << "track unavailable " << to_json(*track);
       }
     }
 
     m_playlists[pl_name] = std::move(pl);
 
-    LOG(INFO) << "imported playlist " << pl_name << ", m_tracks.size=" << m_tracks.size();
+    _log_(info) << "imported playlist " << pl_name << ", m_tracks.size=" << m_tracks.size();
 
     set_playlist_callbacks(sp_pl_ptr);
 
@@ -761,16 +762,16 @@ void spotify_t::process_tracks_to_add()
     auto  data = m_tracks_to_add.front();
     auto& pl   = m_playlists[data.playlist_name];
 
-    //LOG(INFO) << "### BEFORE ADD " << data.playlist_name;
+    //_log_(info) << "### BEFORE ADD " << data.playlist_name;
     //for ( auto& track : pl )
     //{
-    //  LOG(INFO) << to_json(*track);
+    //  _log_(info) << to_json(*track);
     //}
 
     for ( auto& track : data.tracks )
     {
       if ( ! sp_track_is_loaded(track) ) {
-        LOG(INFO) << "process_tracks_to_add wait for tracks to load";
+        _log_(info) << "process_tracks_to_add wait for tracks to load";
         return;
       }
     }
@@ -794,7 +795,7 @@ void spotify_t::process_tracks_to_add()
 
       track->playlists_add(data.playlist_name);
 
-      LOG(INFO) << "added track " << to_json(*track) << " to playlist '" << data.playlist_name << "'";
+      _log_(info) << "added track " << to_json(*track) << " to playlist '" << data.playlist_name << "'";
 
       m_tracks[track->track_id()] = track;
 
@@ -808,10 +809,10 @@ void spotify_t::process_tracks_to_add()
 
     m_tracks_to_add.pop();
 
-    //LOG(INFO) << "### AFTER ADD " << data.playlist_name;
+    //_log_(info) << "### AFTER ADD " << data.playlist_name;
     //for ( auto& track : pl )
     //{
-    //  LOG(INFO) << to_json(*track);
+    //  _log_(info) << to_json(*track);
     //}
   }
 }
@@ -827,10 +828,10 @@ void spotify_t::process_tracks_to_remove()
     {
       auto& pl = m_playlists.at(data.playlist_name);
 
-      //LOG(INFO) << "### BEFORE REMOVE " << data.playlist_name;
+      //_log_(info) << "### BEFORE REMOVE " << data.playlist_name;
       //for ( auto& track : pl )
       //{
-      //  LOG(INFO) << to_json(*track);
+      //  _log_(info) << to_json(*track);
       //}
 
       for ( size_t pos : data.positions )
@@ -841,28 +842,28 @@ void spotify_t::process_tracks_to_remove()
 
           track->playlists_remove(data.playlist_name);
 
-          LOG(INFO) << "removed track " << to_json(*track) << " from playlist '" << data.playlist_name << "'";
+          _log_(info) << "removed track " << to_json(*track) << " from playlist '" << data.playlist_name << "'";
 
           pl.erase(pl.begin()+pos);
         }
         catch(const std::out_of_range&)
         {
-          LOG(ERROR) << "process_tracks_to_remove - pos '" << pos << "' out of range";
+          _log_(error) << "process_tracks_to_remove - pos '" << pos << "' out of range";
         }
         // TODO: Remove from track map if playlist set is empty?
       }
     }
     catch(const std::out_of_range&)
     {
-      LOG(ERROR) << "process_tracks_to_remove - playlist '" << data.playlist_name << "' not found";
+      _log_(error) << "process_tracks_to_remove - playlist '" << data.playlist_name << "' not found";
     }
 
     m_tracks_to_remove.pop();
 
-    //LOG(INFO) << "### AFTER REMOVE " << data.playlist_name;
+    //_log_(info) << "### AFTER REMOVE " << data.playlist_name;
     //for ( auto& track : pl )
     //{
-    //  LOG(INFO) << to_json(*track);
+    //  _log_(info) << to_json(*track);
     //}
   }
 }
@@ -870,7 +871,7 @@ void spotify_t::process_tracks_to_remove()
 // ----------------------------------------------------------------------------
 void spotify_t::fill_continued_playback_tracks()
 {
-  LOG(INFO) << "build continued playback track set";
+  _log_(info) << "build continued playback track set";
   m_continued_playback_tracks.clear();
   for ( auto& t : m_tracks )
   {
@@ -915,7 +916,7 @@ void spotify_t::player_state_notify(std::string state, std::shared_ptr<track_t> 
       observer->player_state_event(std::move(event));
     }
     else {
-      LOG(ERROR) << "observer is null";
+      _log_(error) << "observer is null";
     }
   }
 }
@@ -956,7 +957,7 @@ void spotify_t::logged_in_cb(sp_session *session, sp_error error)
 // ----------------------------------------------------------------------------
 void spotify_t::logged_out_cb(sp_session *session)
 {
-    LOG(INFO) << "callback:  " << __FUNCTION__;
+    _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -977,13 +978,13 @@ inline void spotify_t::metadata_updated_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::connection_error_cb(sp_session *session, sp_error error)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__ << " " << sp_error_message(error);
+  _log_(info) << "callback:  " << __FUNCTION__ << " " << sp_error_message(error);
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::message_to_user_cb(sp_session *session, const char* message)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -1020,7 +1021,7 @@ int spotify_t::music_delivery(sp_session *session, const sp_audioformat *format,
     audio_output->write(frames, num_bytes);
   }
   else {
-    LOG(WARNING) << "callback:  " << __FUNCTION__ << " while not playing";
+    _log_(warning) << "callback:  " << __FUNCTION__ << " while not playing";
   }
 
   return num_frames;
@@ -1029,7 +1030,7 @@ int spotify_t::music_delivery(sp_session *session, const sp_audioformat *format,
 // ----------------------------------------------------------------------------
 void spotify_t::play_token_lost_cb(sp_session *session)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -1039,11 +1040,11 @@ void spotify_t::log_message_cb(sp_session *session, const char* data)
 
   if ( msg.find(" I [") == std::string::npos )
   {
-    LOG(INFO) << "spotify : " << msg;
+    _log_(info) << "spotify : " << msg;
   }
   else
   {
-    LOG(DEBUG) << "spotify : " << msg;
+    _log_(debug) << "spotify : " << msg;
   }
 }
 
@@ -1058,19 +1059,19 @@ void spotify_t::end_of_track_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::stream_error_cb(sp_session *session, sp_error error)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::user_info_updated_cb(sp_session *session)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::start_playback_cb(sp_session *session)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 
   spotify_t* self = reinterpret_cast<spotify_t*>(sp_session_userdata(session));
 
@@ -1080,7 +1081,7 @@ void spotify_t::start_playback_cb(sp_session *session)
 // ----------------------------------------------------------------------------
 void spotify_t::stop_playback_cb(sp_session *session)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -1101,13 +1102,13 @@ void spotify_t::get_audio_buffer_stats_cb(sp_session *session, sp_audio_buffer_s
 // ----------------------------------------------------------------------------
 void spotify_t::offline_status_updated_cb(sp_session *session)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
 void spotify_t::offline_error_cb(sp_session *session, sp_error error)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -1120,14 +1121,14 @@ void spotify_t::credentials_blob_updated_cb(sp_session *session, const char* blo
 // NOTE: Not used.
 void spotify_t::playlist_state_changed_cb(sp_playlist* pl, void* userdata)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 
 #if 0
   spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
 
   if ( sp_playlist_is_loaded(pl) )
   {
-    LOG(INFO) << "playlist loaded " << sp_playlist_name(pl);
+    _log_(info) << "playlist loaded " << sp_playlist_name(pl);
     self->set_playlist_callbacks(pl);
   }
 #endif
@@ -1136,7 +1137,7 @@ void spotify_t::playlist_state_changed_cb(sp_playlist* pl, void* userdata)
 // ----------------------------------------------------------------------------
 void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *tracks, int num_tracks, int position, void *userdata)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 
   spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
 
@@ -1149,25 +1150,26 @@ void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *track
   auto user = sp_playlist_owner(pl);
   auto is_collaborative = sp_playlist_is_collaborative(pl);
 
-  LOG(INFO) << "playlist tracks added - playlist=\"" << pl_name << "\" "
-            << "num_tracks=" << num_tracks << " "
-            << "position=" << position << " "
-            << "owner=\"" << sp_user_canonical_name(user) << "\" "
-            << "is_collaborative=" << (is_collaborative ? "true" : "false");
+  _log_(info)
+    << "playlist tracks added - playlist=\"" << pl_name << "\" "
+    << "num_tracks=" << num_tracks << " "
+    << "position=" << position << " "
+    << "owner=\"" << sp_user_canonical_name(user) << "\" "
+    << "is_collaborative=" << (is_collaborative ? "true" : "false");
 
   playlist_add_data data{pl_name, std::vector<sp_track *>{size_t(num_tracks)}, size_t(position)};
 
   for ( int i=0; i<num_tracks; ++i )
   {
     if ( sp_track_add_ref(tracks[i]) != SP_ERROR_OK ) {
-      LOG(ERROR) << "failed to add track ref";
+      _log_(error) << "failed to add track ref";
     }
     data.tracks[i] = tracks[i];
   }
 
   self->m_command_queue.push([=]()
     {
-      LOG(INFO) << "queuing tracks to be added";
+      _log_(info) << "queuing tracks to be added";
       self->m_tracks_to_add.push(data);
     });
 }
@@ -1175,7 +1177,7 @@ void spotify_t::playlist_tracks_added_cb(sp_playlist *pl, sp_track *const *track
 // ----------------------------------------------------------------------------
 void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, int num_tracks, void *userdata)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 
   spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
 
@@ -1188,10 +1190,11 @@ void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, i
   auto user = sp_playlist_owner(pl);
   auto is_collaborative = sp_playlist_is_collaborative(pl);
 
-  LOG(INFO) << "playlist tracks removed - playlist=\"" << pl_name << "\" "
-            << "num_tracks=" << num_tracks << " "
-            << "owner=\"" << sp_user_canonical_name(user) << "\" "
-            << "is_collaborative=" << (is_collaborative ? "true" : "false");
+  _log_(info)
+    << "playlist tracks removed - playlist=\"" << pl_name << "\" "
+    << "num_tracks=" << num_tracks << " "
+    << "owner=\"" << sp_user_canonical_name(user) << "\" "
+    << "is_collaborative=" << (is_collaborative ? "true" : "false");
 
   playlist_remove_data data{pl_name, std::vector<size_t>{size_t(num_tracks)}, sp_user_canonical_name(user), is_collaborative};
 
@@ -1202,7 +1205,7 @@ void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, i
 
   self->m_command_queue.push([=]()
   {
-    LOG(INFO) << "queuing tracks to be removed";
+    _log_(info) << "queuing tracks to be removed";
     self->m_tracks_to_remove.push(data);
   });
 }
@@ -1210,7 +1213,7 @@ void spotify_t::playlist_tracks_removed_cb(sp_playlist *pl, const int *tracks, i
 // ----------------------------------------------------------------------------
 void spotify_t::playlist_added_cb(sp_playlistcontainer *pc, sp_playlist *playlist, int position, void *userdata)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 
   spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
 
@@ -1219,7 +1222,7 @@ void spotify_t::playlist_added_cb(sp_playlistcontainer *pc, sp_playlist *playlis
 #if 0
   self->m_command_queue.push([=]()
     {
-      LOG(INFO) << "queuing playlist to be imported";
+      _log_(info) << "queuing playlist to be imported";
       self->m_playlists_for_import.push(playlist);
     });
 #endif
@@ -1228,13 +1231,13 @@ void spotify_t::playlist_added_cb(sp_playlistcontainer *pc, sp_playlist *playlis
 // ----------------------------------------------------------------------------
 void spotify_t::container_loaded_cb(sp_playlistcontainer *pc, void *userdata)
 {
-  LOG(INFO) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 
   spotify_t* self = reinterpret_cast<spotify_t*>(userdata);
 
   int num = sp_playlistcontainer_num_playlists(pc);
 
-  LOG(INFO) << "playlist container has " << num << " playlists";
+  _log_(info) << "playlist container has " << num << " playlists";
 
   for ( int i=0; i<num; i++ )
   {
@@ -1263,7 +1266,7 @@ static std::string sp_track_id(sp_track* track)
   sp_link_release(link);
 
   if ( static_cast<size_t>(l) >= sizeof(buf) ) {
-    LOG(ERROR) << "link string truncated";
+    _log_(error) << "link string truncated";
   }
 
   std::string result(buf);
@@ -1303,7 +1306,7 @@ static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const sp_trac
   }
   else
   {
-    LOG(INFO) << "cover_art_link is <null> " << track->title();
+    _log_(info) << "cover_art_link is <null> " << track->title();
   }
 
   sp_artist_release(artist);
@@ -1320,7 +1323,7 @@ static std::string sp_link_to_string(sp_link* link)
   int l = sp_link_as_string(link, buf, sizeof(buf));
 
   if ( static_cast<size_t>(l) >= sizeof(buf) ) {
-    LOG(ERROR) << "link string truncated";
+    _log_(error) << "link string truncated";
   }
 
   return std::move(std::string(buf));

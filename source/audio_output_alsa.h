@@ -103,19 +103,19 @@ private:
     {
       err = snd_pcm_open( &m_handle, m_device_name.c_str(), SND_PCM_STREAM_PLAYBACK, 0 );
       if ( err < 0 ) {
-        LOG(ERROR) << "snd_pcm_open failed! " << snd_strerror(err);
+        _log_(error) << "snd_pcm_open failed! " << snd_strerror(err);
         open_retries++;
         std::this_thread::sleep_for(std::chrono::seconds(1));
       }
       else {
-        LOG(DEBUG) << "snd_pcm_open ok";
+        _log_(debug) << "snd_pcm_open ok";
         break;
       }
     }
 
     err = snd_pcm_set_params(m_handle, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED, 2, 44100, 0, 500000);
     if ( err < 0 ) {
-      LOG(ERROR) << "snd_pcm_set_params failed! " << snd_strerror(err);
+      _log_(error) << "snd_pcm_set_params failed! " << snd_strerror(err);
     }
   }
 private:
@@ -124,12 +124,12 @@ private:
     snd_pcm_sframes_t frames = snd_pcm_writei(m_handle, buffer->data(), buffer->len()/4);
 
     if ( frames < 0 ) {
-      LOG(WARNING) << "underrun";
+      _log_(warning) << "underrun";
       frames = snd_pcm_recover(m_handle, frames, 0);
     }
 
     if ( frames < 0 ) {
-      LOG(ERROR) << snd_strerror(frames);
+      _log_(error) << snd_strerror(frames);
     }
     else {
       m_queued_frames -= frames;
@@ -146,7 +146,7 @@ private:
     }
 
     if (m_handle) {
-      LOG(INFO) << "closing pcm (m_handle=" << m_handle << ")";
+      _log_(info) << "closing pcm (m_handle=" << m_handle << ")";
       snd_pcm_close(m_handle);
     }
   }
