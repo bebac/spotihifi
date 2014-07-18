@@ -20,7 +20,7 @@
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
 static std::string sp_album_id(sp_album* album);
-static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
+//static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
 
 // ----------------------------------------------------------------------------
 spotify_t::spotify_t(const std::string& audio_device_name,
@@ -160,7 +160,7 @@ void spotify_t::player_skip()
 
       m_track_stats[track_id].increase_skip_count();
 
-      _log_(info) << "track stat update " << to_json(m_track_stats[track_id]);
+      track_stat_update(track_id, m_track_stats[track_id]);
 
       sp_track_release(m_track);
       m_track = 0;
@@ -584,7 +584,7 @@ void spotify_t::end_of_track_handler()
 
   m_track_stats[track_id].increase_play_count();
 
-  _log_(info) << "track stat update " << to_json(m_track_stats[track_id]);
+  track_stat_update(track_id, m_track_stats[track_id]);
 
   // Release current track.
   sp_session_player_unload(m_session);
@@ -958,6 +958,18 @@ void spotify_t::set_playlist_callbacks(sp_playlist* pl)
   sp_playlist_add_callbacks(pl, &playlist_callbacks, this);
 }
 
+// ----------------------------------------------------------------------------
+void spotify_t::track_stat_update(const std::string& track_id, const track_stat_t& stat)
+{
+  _log_(info) << "track stat update " << to_json(stat);
+
+  auto it = m_tracks.find(track_id);
+  if ( it != end(m_tracks) )
+  {
+    (*it).second->rating(stat.rating());
+  }
+}
+
 //
 // Spotify callbacks.
 //
@@ -972,7 +984,7 @@ void spotify_t::logged_in_cb(sp_session *session, sp_error error)
 // ----------------------------------------------------------------------------
 void spotify_t::logged_out_cb(sp_session *session)
 {
-    _log_(info) << "callback:  " << __FUNCTION__;
+  _log_(info) << "callback:  " << __FUNCTION__;
 }
 
 // ----------------------------------------------------------------------------
@@ -1314,7 +1326,7 @@ static std::string sp_album_id(sp_album* album)
 }
 
 // ----------------------------------------------------------------------------
-static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const sp_track_ptr)
+std::shared_ptr<track_t> spotify_t::make_track_from_sp_track(sp_track* const sp_track_ptr)
 {
   assert(sp_track_is_loaded(sp_track_ptr));
 
@@ -1326,13 +1338,21 @@ static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const sp_trac
   sp_artist_add_ref(artist = sp_track_artist(sp_track_ptr, 0));
   sp_album_add_ref(album = sp_track_album(sp_track_ptr));
 
-  track->track_id(sp_track_id(sp_track_ptr));
+  auto track_id = sp_track_id(sp_track_ptr);
+
+  track->track_id(track_id);
   track->title(sp_track_name(sp_track_ptr));
   track->track_number(sp_track_index(sp_track_ptr));
   track->duration(sp_track_duration(sp_track_ptr));
   track->artist(sp_artist_name(artist));
   track->album(sp_album_name(album));
   track->album_id(sp_album_id(album));
+
+  auto it = m_track_stats.find(track_id);
+  if ( it != end(m_track_stats) )
+  {
+    track->rating((*it).second.rating());
+  }
 
   sp_artist_release(artist);
   sp_album_release(album);

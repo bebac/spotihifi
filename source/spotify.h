@@ -148,6 +148,10 @@ private:
 private:
   void set_playlist_callbacks(sp_playlist* pl);
 private:
+  std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
+private:
+  void track_stat_update(const std::string& track_id, const track_stat_t& stat);
+private:
   // session callbacks.
   static void logged_in_cb(sp_session *session, sp_error error);
   static void logged_out_cb(sp_session *session);

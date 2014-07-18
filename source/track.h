@@ -24,7 +24,7 @@ class track_t
 public:
   typedef std::set<std::string> pl_set_t;
 public:
-  track_t()
+  track_t() : m_rating(-1)
   {
   }
 public:
@@ -32,6 +32,7 @@ public:
   void title(std::string title)               { m_title = std::move(title); }
   void track_number(int track_number)         { m_track_number = track_number; }
   void duration(int duration_in_msecs)        { m_duration = duration_in_msecs; }
+  void rating(double value)                   { m_rating = value; }
   void artist(std::string artist)             { m_artist = std::move(artist); }
   void album(std::string album)               { m_album = std::move(album); }
   void album_id(std::string album_id)         { m_album_id = std::move(album_id); }
@@ -44,6 +45,7 @@ public:
   const std::string& title() const            { return m_title; }
   int                track_number() const     { return m_track_number; }
   int                duration() const         { return m_duration; }
+  double             rating() const           { return m_rating; }
   const std::string& artist() const           { return m_artist; }
   const std::string& album() const            { return m_album; }
   const std::string& album_id() const         { return m_album_id; }
@@ -53,6 +55,7 @@ private:
   std::string m_title;
   int         m_track_number;
   int         m_duration;
+  double      m_rating;
   std::string m_artist;
   std::string m_album;
   std::string m_album_id;
@@ -68,6 +71,7 @@ static inline json::value to_json(const track_t& track)
     { "title", track.title() },
     { "track_number", track.track_number() },
     { "duration", track.duration() },
+    { "rating", track.rating() },
     { "artist", track.artist() },
     { "album", track.album() },
     { "album_id", track.album_id() }
