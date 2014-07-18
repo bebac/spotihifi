@@ -20,7 +20,6 @@
 // ----------------------------------------------------------------------------
 static std::string sp_track_id(sp_track* track);
 static std::string sp_album_id(sp_album* album);
-//static std::shared_ptr<track_t> make_track_from_sp_track(sp_track* const track);
 
 // ----------------------------------------------------------------------------
 spotify_t::spotify_t(const std::string& audio_device_name,
@@ -194,7 +193,8 @@ void spotify_t::build_track_set_all()
 {
   m_command_queue.push([=]()
   {
-    fill_continued_playback_tracks();
+    m_continued_playlist.clear();
+    fill_continued_playback_queue(true);
   });
 }
 
@@ -203,18 +203,8 @@ void spotify_t::build_track_set_from_playlist(std::string playlist)
 {
   m_command_queue.push([=]()
   {
-    _log_(info) << "build_track_set_from_playlist playlist=" << playlist;
-    m_continued_playback_tracks.clear();
-    for ( auto& t : m_tracks )
-    {
-      auto pl_set = t.second->playlists();
-      if ( pl_set.find(playlist) != pl_set.end() )
-      {
-        auto id = t.second->track_id();
-        m_continued_playback_tracks.push_back(id);
-      }
-    }
-    srand(time(0));
+    m_continued_playlist = playlist;
+    fill_continued_playback_queue(true);
   });
 }
 
@@ -449,14 +439,7 @@ void spotify_t::main()
         process_tracks_to_add();
         process_tracks_to_remove();
 
-        // TODO: Check somehow if playlist import is done.
-        if ( m_session_logged_in &&
-             m_track &&
-             m_continued_playback &&
-             m_continued_playback_tracks.size() == 0 )
-        {
-          fill_continued_playback_tracks();
-        }
+        fill_continued_playback_queue();
       });
       cmd();
     }
@@ -655,18 +638,17 @@ void spotify_t::play_next_from_queue()
 
     m_play_queue.pop_front();
   }
-  else if ( m_continued_playback && m_continued_playback_tracks.size() > 0 )
+  else if ( m_continued_playback && m_continued_playback_queue.size() > 0 )
   {
     std::string uri("spotify:track:");
 
-    // Pick a track from the track set.
-    size_t index = rand() % (m_continued_playback_tracks.size());
-
-    uri += m_continued_playback_tracks[index];
+    uri += m_continued_playback_queue.front();
 
     _log_(info) << "continued playback uri " << uri;
 
     play_track(uri);
+
+    m_continued_playback_queue.pop_front();
   }
   else
   {
@@ -884,16 +866,48 @@ void spotify_t::process_tracks_to_remove()
 }
 
 // ----------------------------------------------------------------------------
-void spotify_t::fill_continued_playback_tracks()
+void spotify_t::fill_continued_playback_queue(bool clear)
 {
-  _log_(info) << "build continued playback track set";
-  m_continued_playback_tracks.clear();
-  for ( auto& t : m_tracks )
-  {
-    auto id = t.second->track_id();
-    m_continued_playback_tracks.push_back(id);
+  if ( clear ) {
+    m_continued_playback_queue.clear();
   }
-  srand(time(0));
+
+  if ( m_continued_playback_queue.size() < 2 )
+  {
+    std::vector<std::string> all;
+
+    all.reserve(m_tracks.size());
+
+    for ( auto& t : m_tracks )
+    {
+      if ( !m_continued_playlist.empty() )
+      {
+        auto pl_set = t.second->playlists();
+
+        if ( pl_set.find(m_continued_playlist) != pl_set.end() )
+        {
+          all.push_back(t.second->track_id());
+        }
+      }
+      else
+      {
+        all.push_back(t.second->track_id());
+      }
+    }
+
+    _log_(info) << "fill continued playback queue - tracks.size=" << all.size();
+
+    std::random_device rd;
+    std::mt19937       g(rd());
+
+    std::shuffle(all.begin(), all.end(), g);
+
+    while ( m_continued_playback_queue.size() < 5 && !all.empty())
+    {
+      m_continued_playback_queue.push_back(all.back());
+      all.pop_back();
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------

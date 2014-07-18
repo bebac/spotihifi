@@ -139,7 +139,7 @@ private:
   void import_playlist(sp_playlist* pl);
   void process_tracks_to_add();
   void process_tracks_to_remove();
-  void fill_continued_playback_tracks();
+  void fill_continued_playback_queue(bool clear=false);
 private:
   std::shared_ptr<audio_output_t> get_audio_output(int rate, int channels);
   std::shared_ptr<audio_output_t> get_audio_output();
@@ -210,7 +210,8 @@ protected:
   std::queue<playlist_remove_data> m_tracks_to_remove;
   /////
   bool m_continued_playback;
-  std::vector<std::string> m_continued_playback_tracks;
+  std::deque<std::string> m_continued_playback_queue;
+  std::string m_continued_playlist;
   /////
   // Observers
   std::vector<std::shared_ptr<player_observer_t>> observers;
