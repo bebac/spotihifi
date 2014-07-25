@@ -51,6 +51,7 @@ spotify_t::spotify_t(const std::string& audio_device_name,
   /////
   m_volume_normalization(false),
   m_continued_playback(true),
+  m_continued_unrated(false),
   m_thr{&spotify_t::main, this}
 {
   _log_(debug) << "constructed spotify instance " << this;
@@ -193,6 +194,7 @@ void spotify_t::build_track_set_all()
 {
   m_command_queue.push([=]()
   {
+    m_continued_unrated = false;
     m_continued_playlist.clear();
     fill_continued_playback_queue(true);
   });
@@ -203,7 +205,19 @@ void spotify_t::build_track_set_from_playlist(std::string playlist)
 {
   m_command_queue.push([=]()
   {
+    m_continued_unrated = false;
     m_continued_playlist = playlist;
+    fill_continued_playback_queue(true);
+  });
+}
+
+// ----------------------------------------------------------------------------
+void spotify_t::build_track_set_unrated()
+{
+  m_command_queue.push([=]()
+  {
+    m_continued_unrated = true;
+    m_continued_playlist.clear();
     fill_continued_playback_queue(true);
   });
 }
@@ -885,6 +899,13 @@ void spotify_t::fill_continued_playback_queue(bool clear)
         auto pl_set = t.second->playlists();
 
         if ( pl_set.find(m_continued_playlist) != pl_set.end() )
+        {
+          all.push_back(t.second->track_id());
+        }
+      }
+      else if ( m_continued_unrated )
+      {
+        if ( t.second->rating() == -1 )
         {
           all.push_back(t.second->track_id());
         }

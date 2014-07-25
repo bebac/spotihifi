@@ -107,9 +107,22 @@ public:
             spotify.build_track_set_from_playlist(pl);
           }
         }
+        else if ( o["rating"].is_string() && o["rating"].as_string() == "unrated" )
+        {
+          spotify.player_stop();
+          spotify.build_track_set_unrated();
+        }
+        else
+        {
+          response["error"] = json::object{ { "code", -32602 }, { "message", "Invalid parameters" } };
+        }
       }
-      spotify.player_play();
-      response["result"] = "ok";
+
+      if ( response["error"].is_null() )
+      {
+        spotify.player_play();
+        response["result"] = "ok";
+      }
     }
     else if ( method == "pause" )
     {

@@ -107,6 +107,7 @@ public:
 public:
   void build_track_set_all();
   void build_track_set_from_playlist(std::string playlist);
+  void build_track_set_unrated();
 public:
   std::future<json::object> get_tracks(long long incarnation = -1, long long transaction = -1);
 public:
@@ -212,6 +213,7 @@ protected:
   bool m_continued_playback;
   std::deque<std::string> m_continued_playback_queue;
   std::string m_continued_playlist;
+  bool m_continued_unrated;
   /////
   // Observers
   std::vector<std::shared_ptr<player_observer_t>> observers;
