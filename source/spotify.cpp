@@ -1077,10 +1077,8 @@ int spotify_t::music_delivery(sp_session *session, const sp_audioformat *format,
 
   if ( self->m_track_playing )
   {
-    size_t num_bytes = num_frames * sizeof(int16_t) * format->channels;
-
     auto audio_output = self->get_audio_output(44100, format->channels);
-    audio_output->write(frames, num_bytes);
+    audio_output->write_s16_le_i(frames, num_frames);
   }
   else {
     _log_(warning) << "callback:  " << __FUNCTION__ << " while not playing";

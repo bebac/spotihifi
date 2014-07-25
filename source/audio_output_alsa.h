@@ -27,33 +27,6 @@
 #include <alsa/asoundlib.h>
 
 // ----------------------------------------------------------------------------
-class audio_buffer_t
-{
-public:
-  audio_buffer_t(const void* buf, size_t len)
-  {
-    m_buf = new unsigned char[len];
-    std::memcpy(m_buf, buf, len);
-    m_len = len;
-  }
-public:
-  ~audio_buffer_t()
-  {
-    delete [] m_buf;
-  }
-private:
-  audio_buffer_t(const audio_buffer_t& other);
-  void operator=(const audio_buffer_t& other);
-public:
-  void* data() { return m_buf; }
-  const void* data() const { return m_buf; }
-  size_t len() const { return m_len; }
-private:
-  unsigned char* m_buf;
-  size_t         m_len;
-};
-
-// ----------------------------------------------------------------------------
 class audio_output_t
 {
 public:
@@ -76,10 +49,18 @@ public:
     m_thr.join();
   }
 public:
-  void write(const void* buffer, size_t len)
+  void write_s16_le_i(const void* frames, size_t num_frames)
   {
-    m_queued_frames += len/4;
-    m_command_queue.push(std::bind(&audio_output_t::write_handler, this, std::make_shared<audio_buffer_t>(buffer, len)));
+    size_t len = num_frames * sizeof(int16_t) * 2 /* channels */;
+    std::shared_ptr<char> buffer(new char[len], std::default_delete<char[]>());
+
+    std::memcpy(buffer.get(), frames, len);
+
+    m_command_queue.push([=]{
+      write_s16_le_i_handler(std::move(buffer), num_frames);
+    });
+
+    m_queued_frames += num_frames;
   }
 public:
   void stop()
@@ -119,9 +100,9 @@ private:
     }
   }
 private:
-  void write_handler(std::shared_ptr<audio_buffer_t> buffer)
+  void write_s16_le_i_handler(std::shared_ptr<char> buf, size_t num_frames)
   {
-    snd_pcm_sframes_t frames = snd_pcm_writei(m_handle, buffer->data(), buffer->len()/4);
+    snd_pcm_sframes_t frames = snd_pcm_writei(m_handle, buf.get(), num_frames);
 
     if ( frames < 0 ) {
       _log_(warning) << "underrun";
