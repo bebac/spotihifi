@@ -1,3 +1,5 @@
+Project is dead see [musciteer](https://github.com/bebac/musciteer)
+
 SpotiHifi
 =========
 
